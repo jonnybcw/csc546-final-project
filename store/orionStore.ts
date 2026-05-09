@@ -5,7 +5,7 @@ import { persist } from "zustand/middleware";
 
 import { updateProgressAfterExercise } from "@/lib/lessonEngine";
 import { mergeContextSummary } from "@/lib/mergeContext";
-import { withLessonActivityDates } from "@/lib/progress";
+import { markLessonActivity, withLessonActivityDates } from "@/lib/progress";
 import type { ContextSummary, LessonPlan, ProcessingStep, ProgressSnapshot, TextRecord } from "@/types/orion";
 
 export const ORION_STORE_STORAGE_KEY = "orion-store-v1";
@@ -81,6 +81,8 @@ interface OrionState {
   lastUploadedFileName: string | null;
   setTargetLanguage: (language: string) => void;
   setUserFullName: (name: string | null) => void;
+  setSummary: (summary: ContextSummary) => void;
+  setProgress: (progress: ProgressSnapshot) => void;
   setPendingUploadFile: (file: File | null) => void;
   setUploadInProgress: (value: boolean) => void;
   setUploadStarted: (value: boolean) => void;
@@ -98,6 +100,7 @@ interface OrionState {
   setLesson: (lesson: LessonPlan, source: "ai") => void;
   setLessonError: (message: string | null) => void;
   submitExerciseResult: (correct: boolean) => void;
+  completeLesson: () => void;
   resetOnboarding: () => void;
   /** Replace context/lesson from Supabase so the account owns data across browsers. */
   bootstrapFromServer: (payload: {
@@ -131,11 +134,19 @@ export const useOrionStore = create<OrionState>()(
       lastUploadedFileName: null,
       setTargetLanguage: (language) =>
         set(() => ({
-          targetLanguage: language
+          targetLanguage: language.trim() || null
         })),
       setUserFullName: (name) =>
         set(() => ({
           userFullName: name?.trim() || null
+        })),
+      setSummary: (summary) =>
+        set(() => ({
+          summary
+        })),
+      setProgress: (progress) =>
+        set(() => ({
+          progress: normalizeProgress(progress)
         })),
       setPendingUploadFile: (file) =>
         set(() => ({
@@ -218,6 +229,10 @@ export const useOrionStore = create<OrionState>()(
       submitExerciseResult: (correct) =>
         set((state) => ({
           progress: updateProgressAfterExercise(state.progress, correct)
+        })),
+      completeLesson: () =>
+        set((state) => ({
+          progress: markLessonActivity(state.progress)
         })),
       resetOnboarding: () =>
         set(() => ({

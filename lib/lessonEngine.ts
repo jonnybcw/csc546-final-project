@@ -1,5 +1,4 @@
 import type { ContextSummary, LessonExercise, LessonPlan, ProgressSnapshot } from "@/types/orion";
-import { markLessonActivity } from "@/lib/progress";
 
 const DEFAULT_SENTENCE = "I finished my coding project late last night.";
 const FALLBACK_TRANSLATE_ANSWER_BY_LANGUAGE: Record<string, string> = {
@@ -50,7 +49,6 @@ const FALLBACK_VOCAB_PAIR_BY_LANGUAGE: Record<string, { source: string; target: 
     { source: "fluency", target: "流暢さ" }
   ]
 };
-
 function titleFromInterests(interests: string[]): string {
   if (interests.length === 0) return "Daily Personalized Practice";
   return `${interests[0]} Conversation`;
@@ -146,17 +144,16 @@ function tokensMatchWithSingleTypoTolerance(normalizedLeft: string, normalizedRi
 
 export function generateLessonPlan(
   summary: ContextSummary,
-  progress: ProgressSnapshot,
+  _progress: ProgressSnapshot,
   targetLanguage = "Spanish"
 ): LessonPlan {
   const sentence = summary.sampleSentences[0] ?? DEFAULT_SENTENCE;
-  const difficultyBoost = progress.accuracyRate > 80 ? "Upper Intermediate" : summary.level;
 
   return {
     title: titleFromInterests(summary.interests),
     description: `Practice phrases and structures from your ${summary.interests[0] ?? "daily"} conversations.`,
     durationMinutes: 15,
-    difficulty: difficultyBoost as LessonPlan["difficulty"],
+    difficulty: summary.level,
     exercises: [
       buildTranslateExercise(sentence, targetLanguage),
       buildFillBlankExercise(summary, targetLanguage),
@@ -245,7 +242,7 @@ export function updateProgressAfterExercise(
   const completionDelta = correct ? 8 : 4;
 
   return {
-    ...markLessonActivity(progress),
+    ...progress,
     wordsLearned: progress.wordsLearned + wordsDelta,
     weeklyGoalCompletion: Math.min(100, progress.weeklyGoalCompletion + completionDelta),
     accuracyRate: Math.max(10, Math.min(100, progress.accuracyRate + accuracyDelta)),

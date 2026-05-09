@@ -23,11 +23,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const { lesson, source } = await generateDailyLessonWithAI(
-      payload.summary,
-      payload.progress,
-      payload.targetLanguage
-    );
+    const targetLanguage = payload.targetLanguage?.trim() || "Spanish";
+    const { lesson, source } = await generateDailyLessonWithAI(payload.summary, payload.progress, targetLanguage);
 
     let dbClient = supabase;
     try {
@@ -57,10 +54,21 @@ export async function POST(request: Request) {
       if (contextUpdateError) throw new Error(contextUpdateError.message);
     }
 
+    const { error: profileError } = await dbClient.from("profiles").upsert(
+      {
+        user_id: user.id,
+        email: user.email,
+        target_language: targetLanguage,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: "user_id" }
+    );
+    if (profileError) throw new Error(profileError.message);
+
     const { error: lessonError } = await dbClient.from("lessons").insert({
       user_id: user.id,
       source,
-      target_language: payload.targetLanguage ?? "Spanish",
+      target_language: targetLanguage,
       lesson_json: lesson,
       created_at: new Date().toISOString()
     });

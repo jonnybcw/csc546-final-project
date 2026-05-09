@@ -7,6 +7,7 @@ import { OrionLogo } from "@/components/orion/orion-logo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { compareAnswerParts, evaluateAnswer } from "@/lib/lessonEngine";
+import { LESSON_COMPLETION_EVENT_ID } from "@/lib/progress";
 import { useOrionStore } from "@/store/orionStore";
 import type { LessonExercise, VocabularyPair } from "@/types/orion";
 
@@ -134,14 +135,47 @@ function parseLabelledItems(value: string): LabelledItem[] {
     .filter((item): item is LabelledItem => Boolean(item));
 }
 
+function hashString(value: string): number {
+  return value.split("").reduce((hash, char) => ((hash * 31) + char.charCodeAt(0)) >>> 0, 0);
+}
+
+function shuffleMatchItems(items: MatchItem[], seed: string): MatchItem[] {
+  return [...items].sort((left, right) =>
+    hashString(`${seed}:${left.id}:${left.label}`) - hashString(`${seed}:${right.id}:${right.label}`)
+  );
+}
+
+function shuffleVocabularyView(
+  view: { prompt: string; sourceItems: MatchItem[]; targetItems: MatchItem[] },
+  exerciseId: string,
+  seed: string
+): { prompt: string; sourceItems: MatchItem[]; targetItems: MatchItem[] } {
+  const sourceItems = shuffleMatchItems(view.sourceItems, `${seed}:${exerciseId}:source`);
+  let targetItems = shuffleMatchItems(view.targetItems, `${seed}:${exerciseId}:target`);
+
+  if (
+    targetItems.length > 1 &&
+    targetItems.every((targetItem, index) => sourceItems[index]?.matchId === targetItem.matchId)
+  ) {
+    targetItems = [...targetItems.slice(1), targetItems[0] as MatchItem];
+  }
+
+  return {
+    ...view,
+    sourceItems,
+    targetItems
+  };
+}
+
 function getVocabularyView(
   exercise: LessonExercise,
-  vocabulary: VocabularyPair[]
+  vocabulary: VocabularyPair[],
+  targetLanguage: string
 ): { prompt: string; sourceItems: MatchItem[]; targetItems: MatchItem[] } {
   const structuredPairs = exercise.matchPairs?.filter((pair) => pair.source && pair.target) ?? [];
   if (structuredPairs.length > 0) {
     return {
-      prompt: "Select one English meaning, then its matching Spanish word.",
+      prompt: `Select one English meaning, then its matching ${targetLanguage} word.`,
       sourceItems: structuredPairs.map((pair, index) => ({
         id: `source-${index}`,
         label: pair.source,
@@ -159,7 +193,7 @@ function getVocabularyView(
   const labelledSources = parseLabelledItems(exercise.answer);
   if (labelledSources.length > 0 && labelledTargets.length > 0) {
     return {
-      prompt: "Select one English meaning, then its matching Spanish word.",
+      prompt: `Select one English meaning, then its matching ${targetLanguage} word.`,
       sourceItems: labelledSources.map((item) => ({
         id: `source-${item.id}`,
         label: item.label,
@@ -176,7 +210,7 @@ function getVocabularyView(
   const matchingVocabulary = vocabulary.filter((pair) => pair.source && pair.target).slice(0, 3);
   if (matchingVocabulary.length > 0) {
     return {
-      prompt: "Select one English meaning, then its matching Spanish word.",
+      prompt: `Select one English meaning, then its matching ${targetLanguage} word.`,
       sourceItems: matchingVocabulary.map((pair, index) => ({
         id: `source-${index}`,
         label: pair.source,
@@ -191,7 +225,7 @@ function getVocabularyView(
   }
 
   return {
-    prompt: "Select one English meaning, then its matching Spanish word.",
+    prompt: `Select one English meaning, then its matching ${targetLanguage} word.`,
     sourceItems: [{
       id: "source-0",
       label: exercise.sourceTerm ?? exercise.answer,
@@ -211,6 +245,7 @@ export default function LessonPage() {
   const summary = useOrionStore((state) => state.summary);
   const progress = useOrionStore((state) => state.progress);
   const submitExerciseResult = useOrionStore((state) => state.submitExerciseResult);
+  const completeLesson = useOrionStore((state) => state.completeLesson);
 
   const [exerciseQueue, setExerciseQueue] = useState<LessonExercise[]>(() => lesson?.exercises ?? []);
   const [exerciseIndex, setExerciseIndex] = useState(0);
@@ -219,6 +254,7 @@ export default function LessonPage() {
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [matchSelections, setMatchSelections] = useState<Record<string, string>>({});
   const [showHint, setShowHint] = useState(false);
+  const [vocabularyShuffleSeed] = useState(() => Math.random().toString(36).slice(2));
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fillBlankInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const handlePrimarySubmitRef = useRef<(() => Promise<void>) | undefined>(undefined);
@@ -236,7 +272,11 @@ export default function LessonPage() {
   useEffect(() => {
     const exerciseCandidate = exerciseQueue[exerciseIndex];
     if (!lesson || exerciseCandidate?.type !== "vocabulary") return;
-    const vocabularyViewCandidate = getVocabularyView(exerciseCandidate, summary?.vocabulary ?? []);
+    const vocabularyViewCandidate = shuffleVocabularyView(
+      getVocabularyView(exerciseCandidate, summary?.vocabulary ?? [], lesson.targetLanguage),
+      exerciseCandidate.id,
+      vocabularyShuffleSeed
+    );
     const onDocumentKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key !== "Enter" || event.shiftKey) return;
       const target = event.target;
@@ -264,7 +304,7 @@ export default function LessonPage() {
     };
     document.addEventListener("keydown", onDocumentKeyDown, true);
     return () => document.removeEventListener("keydown", onDocumentKeyDown, true);
-  }, [lesson, summary?.vocabulary, exerciseQueue, exerciseIndex, feedback, matchSelections]);
+  }, [lesson, summary?.vocabulary, exerciseQueue, exerciseIndex, feedback, matchSelections, vocabularyShuffleSeed]);
 
   if (!lesson) {
     return (
@@ -299,7 +339,11 @@ export default function LessonPage() {
   const isTranslateExercise = exercise.type === "translate";
   const isFillBlankExercise = exercise.type === "fill_blank";
   const isVocabularyExercise = exercise.type === "vocabulary";
-  const vocabularyView = getVocabularyView(exercise, summary?.vocabulary ?? []);
+  const vocabularyView = shuffleVocabularyView(
+    getVocabularyView(exercise, summary?.vocabulary ?? [], activeLesson.targetLanguage),
+    exercise.id,
+    vocabularyShuffleSeed
+  );
   const fillBlankPromptSegments = getFillBlankPromptSegments(exercise.prompt, exercise.answer);
   const fillBlankCount = Math.max(1, fillBlankPromptSegments.length - 1);
   const fillBlankAnswers = getFillBlankAnswers(exercise, fillBlankPromptSegments);
@@ -432,6 +476,19 @@ export default function LessonPage() {
     return correct;
   }
 
+  async function recordLessonCompletion(): Promise<void> {
+    completeLesson();
+    await fetch("/api/progress/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lessonTitle: activeLesson.title,
+        exerciseId: LESSON_COMPLETION_EVENT_ID,
+        correct: true
+      })
+    });
+  }
+
   function moveIncorrectQuestionToEndAndAdvance() {
     const current = exerciseQueue[exerciseIndex];
     if (!current) return;
@@ -459,6 +516,7 @@ export default function LessonPage() {
       setExerciseIndex((index) => index + 1);
       clearAnswerState();
     } else if (correct && isLast) {
+      await recordLessonCompletion();
       router.push("/lesson/completed");
     }
   }

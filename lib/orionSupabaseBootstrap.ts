@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { getLocalDateKey, withLessonActivityDates } from "@/lib/progress";
+import { getLocalDateKey, LESSON_COMPLETION_EVENT_ID, withLessonActivityDates } from "@/lib/progress";
 import { useOrionStore } from "@/store/orionStore";
 import type { ContextSummary, LessonPlan, TextRecord } from "@/types/orion";
 
@@ -130,6 +130,7 @@ export async function syncOrionStateFromSupabase(supabase: SupabaseClient): Prom
       .from("progress_events")
       .select("created_at")
       .eq("user_id", user.id)
+      .eq("exercise_id", LESSON_COMPLETION_EVENT_ID)
       .order("created_at", { ascending: false })
       .limit(1000);
 

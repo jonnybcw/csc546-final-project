@@ -6,7 +6,7 @@ import {
   generateLessonPlan,
   updateProgressAfterExercise
 } from "../lib/lessonEngine";
-import { calculateStreakDays, getLocalDateKey } from "../lib/progress";
+import { calculateStreakDays, getLocalDateKey, markLessonActivity } from "../lib/progress";
 import type { ContextSummary, ProgressSnapshot } from "../types/orion";
 
 const SUMMARY: ContextSummary = {
@@ -37,6 +37,7 @@ describe("lessonEngine", () => {
     const plan = generateLessonPlan(SUMMARY, PROGRESS);
     expect(plan.exercises).toHaveLength(3);
     expect(plan.title).toContain("Coding");
+    expect(plan.difficulty).toBe(SUMMARY.level);
   });
 
   it("generates vocabulary exercises with selectable choices", () => {
@@ -83,6 +84,12 @@ describe("lessonEngine", () => {
     const updated = updateProgressAfterExercise(PROGRESS, true);
     expect(updated.wordsLearned).toBeGreaterThan(PROGRESS.wordsLearned);
     expect(updated.accuracyRate).toBeGreaterThan(PROGRESS.accuracyRate);
+    expect(updated.lessonActivityDates).toEqual(PROGRESS.lessonActivityDates);
+    expect(updated.streakDays).toBe(PROGRESS.streakDays);
+  });
+
+  it("marks streak activity only when a lesson is completed", () => {
+    const updated = markLessonActivity(PROGRESS);
     expect(updated.lessonActivityDates).toContain(getLocalDateKey());
     expect(updated.streakDays).toBe(1);
   });

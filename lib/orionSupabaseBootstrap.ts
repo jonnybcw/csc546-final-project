@@ -29,6 +29,11 @@ function isLessonPlan(x: unknown): x is LessonPlan {
   );
 }
 
+function getAuthDisplayName(userMetadata: Record<string, unknown> | undefined): string | null {
+  const name = userMetadata?.full_name ?? userMetadata?.name;
+  return typeof name === "string" && name.trim().length > 0 ? name.trim() : null;
+}
+
 /**
  * Loads latest context + lesson saved for this Supabase user and writes them into the Orion store.
  * Call after the client session is established so RLS policies apply.
@@ -48,10 +53,37 @@ export async function syncOrionStateFromSupabase(supabase: SupabaseClient): Prom
       .eq("user_id", user.id)
       .maybeSingle();
 
+    let syncedProfile = profile;
     if (profileError) {
       console.warn("[Orion] profiles fetch failed", profileError.message);
     } else {
-      useOrionStore.getState().setUserFullName((profile?.full_name as string | null | undefined) ?? null);
+      const profileName = (profile?.full_name as string | null | undefined)?.trim() || null;
+      const authName = getAuthDisplayName(user.user_metadata);
+
+      if (!profileName && (authName || user.email)) {
+        const { data: updatedProfile, error: updateProfileError } = await supabase
+          .from("profiles")
+          .upsert(
+            {
+              user_id: user.id,
+              email: user.email ?? null,
+              full_name: authName,
+              target_language: (profile?.target_language as string | null | undefined) ?? null,
+              updated_at: new Date().toISOString()
+            },
+            { onConflict: "user_id" }
+          )
+          .select("target_language, full_name")
+          .maybeSingle();
+
+        if (updateProfileError) {
+          console.warn("[Orion] profile name sync failed", updateProfileError.message);
+        } else {
+          syncedProfile = updatedProfile;
+        }
+      }
+
+      useOrionStore.getState().setUserFullName((syncedProfile?.full_name as string | null | undefined) ?? null);
     }
 
     const { data: contextRows, error: contextError } = await supabase
@@ -92,7 +124,7 @@ export async function syncOrionStateFromSupabase(supabase: SupabaseClient): Prom
       lessonRow?.lesson_json && isLessonPlan(lessonRow.lesson_json) ? lessonRow.lesson_json : null;
 
     const targetLanguage =
-      profile?.target_language ?? lesson?.targetLanguage ?? lessonRow?.target_language ?? null;
+      syncedProfile?.target_language ?? lesson?.targetLanguage ?? lessonRow?.target_language ?? null;
 
     const { data: progressRows, error: progressError } = await supabase
       .from("progress_events")
@@ -117,7 +149,7 @@ export async function syncOrionStateFromSupabase(supabase: SupabaseClient): Prom
       summary,
       lesson,
       targetLanguage,
-      userFullName: (profile?.full_name as string | null | undefined) ?? null,
+      userFullName: (syncedProfile?.full_name as string | null | undefined) ?? null,
       progress
     });
   } catch (e) {

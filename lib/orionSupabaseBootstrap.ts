@@ -38,14 +38,14 @@ function getAuthDisplayName(userMetadata: Record<string, unknown> | undefined): 
  * Loads latest context + lesson saved for this Supabase user and writes them into the Orion store.
  * Call after the client session is established so RLS policies apply.
  */
-export async function syncOrionStateFromSupabase(supabase: SupabaseClient): Promise<void> {
+export async function syncOrionStateFromSupabase(supabase: SupabaseClient): Promise<boolean> {
   try {
     const {
       data: { user },
       error: userError
     } = await supabase.auth.getUser();
 
-    if (userError || !user) return;
+    if (userError || !user) return false;
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
@@ -95,17 +95,17 @@ export async function syncOrionStateFromSupabase(supabase: SupabaseClient): Prom
 
     if (contextError) {
       console.warn("[Orion] context_profiles fetch failed", contextError.message);
-      return;
+      return false;
     }
 
     const ctxRow = contextRows?.[0];
-    if (!ctxRow) return;
+    if (!ctxRow) return true;
 
     const summary = ctxRow.summary_json;
     const records = ctxRow.raw_records_json;
     if (!isContextSummary(summary) || !isTextRecordArray(records)) {
       console.warn("[Orion] Invalid context JSON from server");
-      return;
+      return false;
     }
 
     const { data: lessonRows, error: lessonError } = await supabase
@@ -153,7 +153,9 @@ export async function syncOrionStateFromSupabase(supabase: SupabaseClient): Prom
       userFullName: (syncedProfile?.full_name as string | null | undefined) ?? null,
       progress
     });
+    return true;
   } catch (e) {
     console.warn("[Orion] syncOrionStateFromSupabase", e);
+    return false;
   }
 }

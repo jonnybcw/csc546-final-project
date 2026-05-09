@@ -83,6 +83,7 @@ describe("generateDailyLessonWithAI", () => {
           type: "translate",
           prompt: "I am planning a trip to Rome.",
           answer: "Estoy planeando un viaje a Roma.",
+          acceptedAnswers: ["Planeo un viaje a Roma."],
           hint: "Focus on the travel action."
         },
         {
@@ -114,5 +115,7 @@ describe("generateDailyLessonWithAI", () => {
     expect(messages?.[1]?.content).toContain("Write title and description in English");
     expect(messages?.[1]?.content).toContain("Do not write the title or description in Spanish");
     expect(messages?.[1]?.content).toContain(`difficulty: must exactly equal the detected level "${SUMMARY.level}"`);
+    expect(messages?.[1]?.content).toContain("acceptedAnswers only for translate exercises");
+    expect(messages?.[1]?.content).toContain("Include variants with optional subject pronouns");
   });
 });

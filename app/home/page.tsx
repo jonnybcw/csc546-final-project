@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AppShell } from "@/components/orion/app-shell";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,30 @@ export default function HomePage() {
   const userFullName = useOrionStore((state) => state.userFullName);
 
   const [remoteSyncDone, setRemoteSyncDone] = useState(false);
+  const [remoteSyncError, setRemoteSyncError] = useState<string | null>(null);
+
+  const syncWorkspace = useCallback(async (isCancelled: () => boolean = () => false) => {
+    setRemoteSyncDone(false);
+    setRemoteSyncError(null);
+
+    await waitForOrionStoreHydration();
+    if (isCancelled()) return;
+
+    const hasLocal = useOrionStore.getState().summary && useOrionStore.getState().lesson;
+    if (hasLocal) {
+      setRemoteSyncDone(true);
+      return;
+    }
+
+    const supabase = createSupabaseBrowserClient();
+    if (supabase) {
+      const synced = await syncOrionStateFromSupabase(supabase);
+      if (!synced && !isCancelled()) {
+        setRemoteSyncError("We could not sync your account data. Check your connection and try again.");
+      }
+    }
+    if (!isCancelled()) setRemoteSyncDone(true);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,7 +78,10 @@ export default function HomePage() {
 
       const supabase = createSupabaseBrowserClient();
       if (supabase) {
-        await syncOrionStateFromSupabase(supabase);
+        const synced = await syncOrionStateFromSupabase(supabase);
+        if (!synced && !cancelled) {
+          setRemoteSyncError("We could not sync your account data. Check your connection and try again.");
+        }
       }
       if (!cancelled) setRemoteSyncDone(true);
     };
@@ -78,14 +105,30 @@ export default function HomePage() {
   if (!summary || !activeLesson) {
     return (
       <main className="mx-auto max-w-4xl px-6 py-20">
-        <Card className="text-center">
+        <Card className="text-center" role={remoteSyncError ? "alert" : undefined}>
           <p className="text-xl font-semibold">No lesson available yet</p>
-          <p className="mt-2 text-slate-400">
-            Generate your lesson from the review step after AI processing completes successfully.
-          </p>
-          <Button className="mt-6" onClick={() => router.push("/upload")}>
-            Go to upload
-          </Button>
+          {remoteSyncError ? (
+            <>
+              <p className="mt-2 text-slate-400">{remoteSyncError}</p>
+              <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+                <Button variant="secondary" onClick={() => void syncWorkspace()}>
+                  Retry sync
+                </Button>
+                <Button onClick={() => router.push("/upload")}>
+                  Upload new context
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-slate-400">
+                Generate your lesson from the review step after AI processing completes successfully.
+              </p>
+              <Button className="mt-6" onClick={() => router.push("/upload")}>
+                Go to upload
+              </Button>
+            </>
+          )}
         </Card>
       </main>
     );
@@ -93,7 +136,7 @@ export default function HomePage() {
 
   const firstName = userFullName?.trim().split(/\s+/)[0] ?? "";
   const greeting = getTimeBasedGreeting();
-  const greetingIcon = isEvening() ? "🌙" : "☀️";
+  const greetingIcon = isEvening() ? "🌙" : "🌞";
 
   return (
     <AppShell active="home">

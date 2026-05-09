@@ -6,7 +6,14 @@ import { useRouter } from "next/navigation";
 import { OrionLogo } from "@/components/orion/orion-logo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { compareAnswerParts, evaluateAnswer } from "@/lib/lessonEngine";
+import { Dialog } from "@/components/ui/dialog";
+import {
+  compareAnswerParts,
+  evaluateAcceptedAnswers,
+  evaluateAnswer,
+  getAcceptedTranslateAnswers,
+  getClosestExpectedAnswer
+} from "@/lib/lessonEngine";
 import { LESSON_COMPLETION_EVENT_ID } from "@/lib/progress";
 import { useOrionStore } from "@/store/orionStore";
 import type { LessonExercise, VocabularyPair } from "@/types/orion";
@@ -114,6 +121,12 @@ interface MatchItem {
   id: string;
   label: string;
   matchId: string;
+}
+
+interface ProgressEventPayload {
+  lessonTitle: string;
+  exerciseId: string;
+  correct: boolean;
 }
 
 function parseLabelledItems(value: string): LabelledItem[] {
@@ -255,6 +268,11 @@ export default function LessonPage() {
   const [matchSelections, setMatchSelections] = useState<Record<string, string>>({});
   const [showHint, setShowHint] = useState(false);
   const [vocabularyShuffleSeed] = useState(() => Math.random().toString(36).slice(2));
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [progressSyncError, setProgressSyncError] = useState<string | null>(null);
+  const [lastFailedProgressEvent, setLastFailedProgressEvent] = useState<ProgressEventPayload | null>(null);
+  const [progressSyncInProgress, setProgressSyncInProgress] = useState(false);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fillBlankInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const handlePrimarySubmitRef = useRef<(() => Promise<void>) | undefined>(undefined);
@@ -368,11 +386,21 @@ export default function LessonPage() {
       return `${sourceItem.label} - ${targetItem?.label ?? "unmatched"}`;
     })
     .join(" | ");
+  const acceptedTranslateAnswers = isTranslateExercise
+    ? getAcceptedTranslateAnswers(exercise, activeLesson.targetLanguage)
+    : [];
+  const closestTranslateAnswer = isTranslateExercise
+    ? getClosestExpectedAnswer(input, acceptedTranslateAnswers)
+    : "";
   const expectedAnswerText = isFillBlankExercise
     ? getCompletedFillBlankAnswer(fillBlankPromptSegments, fillBlankAnswers, exercise.answer)
     : isVocabularyExercise
       ? expectedVocabularyMatchText
-    : exercise.answer;
+      : closestTranslateAnswer || exercise.answer;
+  const acceptedAnswerText = acceptedTranslateAnswers.length > 1
+    ? acceptedTranslateAnswers.join(" / ")
+    : expectedAnswerText;
+  const shouldShowSupportArea = isTranslateExercise || feedback === "incorrect" || Boolean(progressSyncError);
   const exerciseLabel =
     exercise.type === "translate" ? "Translate" : exercise.type === "fill_blank" ? "Fill in the blanks" : "Match the words";
   const exerciseTitle =
@@ -385,12 +413,13 @@ export default function LessonPage() {
         : `Match each word in English with its translation in ${activeLesson.targetLanguage}.`;
   const exerciseIcon = exercise.type === "translate" ? "A" : exercise.type === "fill_blank" ? "+" : "<>";
   const canSubmit =
-    feedback === "incorrect" ||
-    (isVocabularyExercise
-      ? vocabularyView.sourceItems.every((sourceItem) => matchSelections[sourceItem.id])
-      : isFillBlankExercise
-        ? Array.from({ length: fillBlankCount }).every((_, blankIndex) => (fillBlankInputValues[blankIndex] ?? "").trim())
-        : input.trim().length > 0);
+    !isSubmitting &&
+    (feedback === "incorrect" ||
+      (isVocabularyExercise
+        ? vocabularyView.sourceItems.every((sourceItem) => matchSelections[sourceItem.id])
+        : isFillBlankExercise
+          ? Array.from({ length: fillBlankCount }).every((_, blankIndex) => (fillBlankInputValues[blankIndex] ?? "").trim())
+          : input.trim().length > 0));
   const answerParts = feedback === "incorrect"
     ? compareAnswerParts(
       isVocabularyExercise ? submittedVocabularyMatchText : input,
@@ -408,6 +437,8 @@ export default function LessonPage() {
     if (isFillBlankExercise) {
       return fillBlankAnswers.every((answer, index) => evaluateAnswer(fillBlankInputValues[index] ?? "", answer));
     }
+
+    if (isTranslateExercise) return evaluateAcceptedAnswers(input, acceptedTranslateAnswers);
 
     if (!isVocabularyExercise) return evaluateAnswer(input, exercise.answer);
 
@@ -460,32 +491,60 @@ export default function LessonPage() {
     setInput(submittedText);
   }
 
+  async function sendProgressEvent(payload: ProgressEventPayload): Promise<boolean> {
+    setProgressSyncInProgress(true);
+    setProgressSyncError(null);
+
+    try {
+      const response = await fetch("/api/progress/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? "Progress could not be synced.");
+      }
+
+      setLastFailedProgressEvent(null);
+      return true;
+    } catch (error) {
+      setLastFailedProgressEvent(payload);
+      setProgressSyncError(
+        error instanceof Error
+          ? error.message
+          : "Progress could not be synced. Your answer is saved locally."
+      );
+      return false;
+    } finally {
+      setProgressSyncInProgress(false);
+    }
+  }
+
+  async function retryProgressSync() {
+    if (!lastFailedProgressEvent) return;
+    await sendProgressEvent(lastFailedProgressEvent);
+  }
+
   async function checkAnswer(): Promise<boolean> {
     const correct = evaluateCurrentAnswer();
     setFeedback(correct ? "correct" : "incorrect");
     submitExerciseResult(correct);
-    await fetch("/api/progress/event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        lessonTitle: activeLesson.title,
-        exerciseId: exercise.id,
-        correct
-      })
+    await sendProgressEvent({
+      lessonTitle: activeLesson.title,
+      exerciseId: exercise.id,
+      correct
     });
     return correct;
   }
 
   async function recordLessonCompletion(): Promise<void> {
     completeLesson();
-    await fetch("/api/progress/event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        lessonTitle: activeLesson.title,
-        exerciseId: LESSON_COMPLETION_EVENT_ID,
-        correct: true
-      })
+    await sendProgressEvent({
+      lessonTitle: activeLesson.title,
+      exerciseId: LESSON_COMPLETION_EVENT_ID,
+      correct: true
     });
   }
 
@@ -506,18 +565,25 @@ export default function LessonPage() {
   }
 
   async function handlePrimarySubmit(): Promise<void> {
-    if (feedback === "incorrect") {
-      moveIncorrectQuestionToEndAndAdvance();
-      return;
-    }
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-    const correct = await checkAnswer();
-    if (correct && !isLast) {
-      setExerciseIndex((index) => index + 1);
-      clearAnswerState();
-    } else if (correct && isLast) {
-      await recordLessonCompletion();
-      router.push("/lesson/completed");
+    try {
+      if (feedback === "incorrect") {
+        moveIncorrectQuestionToEndAndAdvance();
+        return;
+      }
+
+      const correct = await checkAnswer();
+      if (correct && !isLast) {
+        setExerciseIndex((index) => index + 1);
+        clearAnswerState();
+      } else if (correct && isLast) {
+        await recordLessonCompletion();
+        router.push("/lesson/completed");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -537,6 +603,14 @@ export default function LessonPage() {
     void handlePrimarySubmit();
   }
 
+  function handleExitLesson() {
+    setShowExitDialog(true);
+  }
+
+  function confirmExitLesson() {
+    router.push("/home");
+  }
+
   const decorativeStars = Array.from({ length: 18 }, (_, starIndex) => ({
     id: `star-${starIndex}`,
     x: 28 + ((starIndex * 23) % 122),
@@ -545,13 +619,10 @@ export default function LessonPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-5xl flex-col px-4 py-5 sm:px-8">
-      <header className="grid flex-none grid-cols-[auto_1fr_auto] items-start gap-4">
-        <OrionLogo priority className="w-28" />
+      <header className="grid flex-none grid-cols-[auto_1fr_auto] items-center gap-4">
+        <OrionLogo priority className="w-28 shrink-0" />
 
-        <div className="w-72 max-w-[42vw] justify-self-center pt-1 text-center">
-          <p className="mb-4 text-sm font-medium text-slate-200 sm:text-base">
-            Step {exerciseIndex + 1} of {totalSteps}
-          </p>
+        <div className="w-72 max-w-[42vw] justify-self-center">
           <div className="flex items-center gap-2">
             {exerciseQueue.map((queuedExercise, index) => (
               <div key={queuedExercise.id} className="h-2 flex-1 overflow-hidden rounded-full bg-slate-700/60">
@@ -564,16 +635,16 @@ export default function LessonPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-self-end gap-3">
-          <p className="hidden pt-2 text-sm font-medium text-slate-100 sm:block sm:text-base">
-            <span className="mr-2" aria-hidden="true">🔥</span>
-            {progress.streakDays} day streak
+        <div className="flex items-center justify-self-end gap-5">
+          <p className="hidden items-center gap-2 whitespace-nowrap text-sm font-medium leading-none text-slate-100 sm:flex sm:text-base">
+            <span aria-hidden="true">🔥</span>
+            <span>{progress.streakDays} day streak</span>
           </p>
           <button
             type="button"
             className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-slate-200 shadow-[0_10px_30px_rgba(0,0,0,0.24)] backdrop-blur transition hover:border-white/20 hover:bg-white/[0.12] hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400/70 focus:ring-offset-2 focus:ring-offset-[#040918]"
             aria-label="Exit lesson"
-            onClick={() => router.push("/home")}
+            onClick={handleExitLesson}
           >
             <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 6l12 12M18 6 6 18" />
@@ -718,7 +789,7 @@ export default function LessonPage() {
                   {exercise.prompt}
                 </Card>
                 <textarea
-                  className={`min-h-56 w-full resize-none rounded-xl border bg-slate-950/25 p-6 text-base text-white outline-none transition placeholder:text-slate-400 sm:min-h-72 sm:text-lg ${feedbackStyle}`}
+                  className={`min-h-14 w-full resize-none rounded-xl border bg-slate-950/25 p-4 text-base text-white outline-none transition placeholder:text-slate-400 sm:min-h-[4.5rem] sm:text-lg ${feedbackStyle}`}
                   placeholder={`Type your answer in ${activeLesson.targetLanguage}...`}
                   value={input}
                   readOnly={feedback === "incorrect"}
@@ -728,50 +799,70 @@ export default function LessonPage() {
               </>
             )}
 
-            <div className="mt-auto border-t border-slate-800 pt-6">
-              {isTranslateExercise && (
-                <button
-                  type="button"
-                  className={`mx-auto flex items-center gap-3 text-base font-medium transition ${showHint ? "text-emerald-300 hover:text-emerald-200" : "text-violet-300 hover:text-violet-200"}`}
-                  onClick={showExerciseHint}
-                >
-                  {!showHint && (
-                    <span className="grid size-6 place-items-center rounded-full border border-violet-400/60 text-xs">?</span>
-                  )}
-                  {showHint ? `Answer: ${expectedAnswerText}` : "Need a hint?"}
-                </button>
-              )}
-
-              {feedback === "incorrect" && (
-                <div className="mt-4 rounded-2xl border border-rose-300/30 bg-rose-500/10 p-4 text-sm">
-                  <p className="font-semibold text-rose-100">Review your answer</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {answerParts.length > 0 ? (
-                      answerParts.map((part) => (
-                        <span
-                          key={part.id}
-                          className={
-                            part.status === "correct"
-                              ? "rounded-lg border border-emerald-300/40 bg-emerald-500/15 px-2 py-1 text-emerald-100"
-                              : "rounded-lg border border-rose-300/50 bg-rose-500/20 px-2 py-1 text-rose-100"
-                          }
-                        >
-                          {part.token}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="rounded-lg border border-rose-300/50 bg-rose-500/20 px-2 py-1 text-rose-100">
-                        No answer entered
-                      </span>
+            {shouldShowSupportArea && (
+              <div className="mt-auto border-t border-slate-800 pt-6">
+                {isTranslateExercise && (
+                  <button
+                    type="button"
+                    className={`mx-auto flex items-center gap-3 text-base font-medium transition ${showHint ? "text-emerald-300 hover:text-emerald-200" : "text-violet-300 hover:text-violet-200"}`}
+                    onClick={showExerciseHint}
+                  >
+                    {!showHint && (
+                      <span className="grid size-6 place-items-center rounded-full border border-violet-400/60 text-xs">?</span>
                     )}
+                    {showHint ? `Answer: ${acceptedAnswerText}` : "Need a hint?"}
+                  </button>
+                )}
+
+                {feedback === "incorrect" && (
+                  <div className={isTranslateExercise ? "mt-4 rounded-2xl border border-rose-300/30 bg-rose-500/10 p-4 text-sm" : "rounded-2xl border border-rose-300/30 bg-rose-500/10 p-4 text-sm"}>
+                    <p className="font-semibold text-rose-100">Review your answer</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {answerParts.length > 0 ? (
+                        answerParts.map((part) => (
+                          <span
+                            key={part.id}
+                            className={
+                              part.status === "correct"
+                                ? "rounded-lg border border-emerald-300/40 bg-emerald-500/15 px-2 py-1 text-emerald-100"
+                                : "rounded-lg border border-rose-300/50 bg-rose-500/20 px-2 py-1 text-rose-100"
+                            }
+                          >
+                            {part.token}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="rounded-lg border border-rose-300/50 bg-rose-500/20 px-2 py-1 text-rose-100">
+                          No answer entered
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Correct answer</p>
+                    <p className="mt-1 rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-100">
+                      {acceptedAnswerText}
+                    </p>
                   </div>
-                  <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Correct answer</p>
-                  <p className="mt-1 rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-100">
-                    {expectedAnswerText}
-                  </p>
-                </div>
-              )}
-            </div>
+                )}
+
+                {progressSyncError && (
+                  <div className={(isTranslateExercise || feedback === "incorrect") ? "mt-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 p-4 text-sm text-amber-50" : "rounded-2xl border border-amber-300/30 bg-amber-500/10 p-4 text-sm text-amber-50"} role="status" aria-live="polite">
+                    <p className="font-semibold">Progress sync needs another try</p>
+                    <p className="mt-1 text-amber-100/80">
+                      {progressSyncError} Your answer is saved locally, but your account progress may not be up to date.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="mt-3"
+                      disabled={!lastFailedProgressEvent || progressSyncInProgress}
+                      onClick={() => void retryProgressSync()}
+                    >
+                      {progressSyncInProgress ? "Retrying..." : "Retry sync"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
 
@@ -781,10 +872,31 @@ export default function LessonPage() {
             disabled={!canSubmit}
             onClick={() => void handlePrimarySubmit()}
           >
-            {feedback === "incorrect" ? "Next" : isLast ? "Finish Lesson" : "Check Answer"}
+            {isSubmitting ? "Checking..." : feedback === "incorrect" ? "Next" : isLast ? "Finish Lesson" : "Check Answer"}
           </Button>
         </div>
       </Card>
+
+      <Dialog
+        open={showExitDialog}
+        title="Leave this lesson?"
+        description="Your current answer will not be submitted. You can come back from home when you are ready to continue."
+        icon={<span className="text-3xl" aria-hidden="true">⚠️</span>}
+        onOpenChange={setShowExitDialog}
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Button type="button" variant="secondary" onClick={() => setShowExitDialog(false)}>
+            Keep learning
+          </Button>
+          <button
+            type="button"
+            className="rounded-xl border border-rose-300/30 bg-rose-500/15 px-5 py-3 text-sm font-semibold text-rose-50 transition hover:bg-rose-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#040817]"
+            onClick={confirmExitLesson}
+          >
+            Leave lesson
+          </button>
+        </div>
+      </Dialog>
     </main>
   );
 }

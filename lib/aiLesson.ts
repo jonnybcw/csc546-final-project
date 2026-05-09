@@ -16,6 +16,7 @@ const AILessonSchema = z.object({
         prompt: z.string().min(1),
         answer: z.string().min(1),
         hint: z.string().optional(),
+        acceptedAnswers: z.array(z.string().min(1)).min(1).max(5).optional(),
         choices: z.array(z.string().min(1)).min(2).max(5).optional(),
         blankAnswers: z.array(z.string().min(1)).min(1).max(4).optional(),
         blankPlaceholders: z.array(z.string().min(1)).min(1).max(4).optional(),
@@ -148,11 +149,17 @@ Each exercise must include:
 - prompt
 - answer
 - hint
+- acceptedAnswers only for translate exercises.
 - choices only for vocabulary exercises.
 - blankAnswers only for fill_blank exercises.
 - blankPlaceholders only for fill_blank exercises.
 - sourceTerm only for vocabulary exercises.
 - matchPairs only for vocabulary exercises.
+
+For translate exercises:
+- Set answer to one natural, complete ${targetLanguage} translation.
+- Include acceptedAnswers as 2-5 natural alternate ${targetLanguage} translations when multiple wordings are correct.
+- Include variants with optional subject pronouns when appropriate, for example both "Yo quiero..." and "Quiero..." in Spanish.
 
 For fill_blank exercises:
 - Put one ____ marker in the prompt for each missing word or phrase.

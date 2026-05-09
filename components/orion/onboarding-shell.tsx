@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { LogoutButton } from "@/components/orion/logout-button";
@@ -20,7 +21,9 @@ export function OnboardingShell({ step, left, right }: OnboardingShellProps) {
       <header className="mb-8 flex items-center justify-between">
         <OrionLogo priority className="w-36" />
         <div className="flex items-center gap-3">
-          <div className="text-sm text-slate-300">Need help?</div>
+          <Link href="/#faq" className="text-sm text-slate-300 hover:text-white">
+            Need help?
+          </Link>
           <LogoutButton />
         </div>
       </header>

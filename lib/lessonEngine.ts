@@ -106,6 +106,37 @@ function normalizeAnswerPart(value: string): string {
   return value.trim().toLowerCase().replace(/[.,!?;:"'()¿¡]/g, "");
 }
 
+const PRO_DROP_PRONOUNS_BY_LANGUAGE: Record<string, string[]> = {
+  Spanish: ["yo", "tu", "tú", "el", "él", "ella", "usted", "nosotros", "nosotras", "vosotros", "vosotras", "ellos", "ellas", "ustedes"],
+  Portuguese: ["eu", "tu", "ele", "ela", "você", "voce", "nós", "nos", "vocês", "voces", "eles", "elas"],
+  Italian: ["io", "tu", "lui", "lei", "noi", "voi", "loro"]
+};
+
+function uniqueAnswerOptions(answers: string[]): string[] {
+  const seen = new Set<string>();
+  return answers
+    .map((answer) => answer.trim())
+    .filter((answer) => {
+      if (!answer) return false;
+      const normalized = normalizeAnswerPart(answer);
+      if (seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    });
+}
+
+function getProDropAnswerOptions(answer: string, targetLanguage: string): string[] {
+  const pronouns = PRO_DROP_PRONOUNS_BY_LANGUAGE[targetLanguage] ?? [];
+  if (pronouns.length === 0) return [];
+
+  const leadingPronounPattern = new RegExp(
+    `^([¿¡]?\\s*)(?:${pronouns.map((pronoun) => pronoun.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\s+`,
+    "i"
+  );
+  const answerWithoutPronoun = answer.trim().replace(leadingPronounPattern, "$1").trim();
+  return answerWithoutPronoun === answer.trim() ? [] : [answerWithoutPronoun];
+}
+
 /** Max single insert/substitute/delete for words at least this long (avoids lax short-word matches). */
 const MIN_SINGLE_TYPO_LEN = 6;
 
@@ -168,6 +199,33 @@ export function evaluateAnswer(input: string, expected: string): boolean {
   const normalizedInput = normalizeAnswerPart(input);
   const normalizedExpected = normalizeAnswerPart(expected);
   return tokensMatchWithSingleTypoTolerance(normalizedInput, normalizedExpected);
+}
+
+export function getAcceptedTranslateAnswers(
+  exercise: Pick<LessonExercise, "answer" | "acceptedAnswers">,
+  targetLanguage: string
+): string[] {
+  const explicitAnswers = uniqueAnswerOptions([exercise.answer, ...(exercise.acceptedAnswers ?? [])]);
+  const proDropAnswers = explicitAnswers.flatMap((answer) => getProDropAnswerOptions(answer, targetLanguage));
+  return uniqueAnswerOptions([...explicitAnswers, ...proDropAnswers]);
+}
+
+export function evaluateAcceptedAnswers(input: string, expectedAnswers: string[]): boolean {
+  return expectedAnswers.some((expectedAnswer) => evaluateAnswer(input, expectedAnswer));
+}
+
+export function getClosestExpectedAnswer(input: string, expectedAnswers: string[]): string {
+  const fallback = expectedAnswers[0] ?? "";
+  return expectedAnswers.reduce((bestAnswer, expectedAnswer) => {
+    const bestMatches = compareAnswerParts(input, bestAnswer).filter((part) => part.status === "correct").length;
+    const currentMatches = compareAnswerParts(input, expectedAnswer).filter((part) => part.status === "correct").length;
+    if (currentMatches > bestMatches) return expectedAnswer;
+    if (currentMatches < bestMatches) return bestAnswer;
+
+    const bestLengthDelta = Math.abs(input.length - bestAnswer.length);
+    const currentLengthDelta = Math.abs(input.length - expectedAnswer.length);
+    return currentLengthDelta < bestLengthDelta ? expectedAnswer : bestAnswer;
+  }, fallback);
 }
 
 export interface AnswerPartFeedback {

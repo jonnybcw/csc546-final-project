@@ -56,6 +56,7 @@ export interface LessonExercise {
   prompt: string;
   answer: string;
   hint: string;
+  acceptedAnswers?: string[];
   choices?: string[];
   blankAnswers?: string[];
   blankPlaceholders?: string[];

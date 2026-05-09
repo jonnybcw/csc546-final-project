@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
 import { AppShell } from "@/components/orion/app-shell";
@@ -209,6 +209,29 @@ export default function SettingsPage() {
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
+  const [accountSyncError, setAccountSyncError] = useState<string | null>(null);
+  const [accountSyncInProgress, setAccountSyncInProgress] = useState(false);
+
+  const retryAccountSync = useCallback(async () => {
+    setAccountSyncError(null);
+    setAccountSyncInProgress(true);
+
+    try {
+      await waitForOrionStoreHydration();
+      if (!supabase) {
+        throw new Error("Account sync is unavailable because Supabase is not configured.");
+      }
+
+      const synced = await syncOrionStateFromSupabase(supabase);
+      if (!synced) {
+        throw new Error("We could not sync your account data. Check your connection and try again.");
+      }
+    } catch (error) {
+      setAccountSyncError(error instanceof Error ? error.message : "We could not sync your account data.");
+    } finally {
+      setAccountSyncInProgress(false);
+    }
+  }, [supabase]);
 
   useEffect(() => {
     let cancelled = false;
@@ -218,7 +241,13 @@ export default function SettingsPage() {
       const state = useOrionStore.getState();
       if (cancelled || !supabase || (state.summary && state.userFullName)) return;
 
-      await syncOrionStateFromSupabase(supabase);
+      setAccountSyncError(null);
+      setAccountSyncInProgress(true);
+      const synced = await syncOrionStateFromSupabase(supabase);
+      if (!cancelled && !synced) {
+        setAccountSyncError("We could not sync your account data. Check your connection and try again.");
+      }
+      if (!cancelled) setAccountSyncInProgress(false);
     };
 
     void run();
@@ -378,6 +407,24 @@ export default function SettingsPage() {
             Review and edit the profile, context, vocabulary, and progress Orion uses to generate lessons.
           </p>
         </header>
+
+        {accountSyncError && (
+          <Card className="mb-6 flex flex-col gap-4 border-amber-400/25 bg-amber-500/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between" role="alert">
+            <div>
+              <p className="font-semibold text-amber-100">Account sync failed</p>
+              <p className="mt-1 text-sm leading-6 text-amber-100/75">{accountSyncError}</p>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              className="shrink-0"
+              disabled={accountSyncInProgress}
+              onClick={() => void retryAccountSync()}
+            >
+              {accountSyncInProgress ? "Retrying..." : "Retry sync"}
+            </Button>
+          </Card>
+        )}
 
         <div className="grid max-w-5xl gap-6">
           <Card className="p-6">

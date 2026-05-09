@@ -130,21 +130,27 @@ export default function ReviewPage() {
               </Button>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {summary.interests.map((interest) => (
-              <Chip key={interest} className="border-white/15 bg-white/[0.04] py-1.5 pr-1 text-slate-200">
-                {interest}
-                <button
-                  type="button"
-                  className="ml-1 rounded-md px-2 py-0.5 text-xs text-slate-500 hover:bg-white/10 hover:text-slate-200"
-                  aria-label={`Remove ${interest}`}
-                  onClick={() => removeInterest(interest)}
-                >
-                  ×
-                </button>
-              </Chip>
-            ))}
-          </div>
+          {summary.interests.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {summary.interests.map((interest) => (
+                <Chip key={interest} className="border-white/15 bg-white/[0.04] py-1.5 pr-1 text-slate-200">
+                  {interest}
+                  <button
+                    type="button"
+                    className="ml-1 rounded-md px-2 py-0.5 text-xs text-slate-500 hover:bg-white/10 hover:text-slate-200"
+                    aria-label={`Remove ${interest}`}
+                    onClick={() => removeInterest(interest)}
+                  >
+                    ×
+                  </button>
+                </Chip>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-400">
+              No interests found yet. Add a topic you care about so Orion can personalize the lesson.
+            </p>
+          )}
         </section>
 
         <section className="border-b border-white/10 py-8">
@@ -208,9 +214,9 @@ export default function ReviewPage() {
           </div>
         </section>
 
-        {summary.themes.length > 0 && (
-          <section className="border-b border-white/10 py-8">
-            <p className="mb-4 text-lg font-semibold text-white">Conversation themes</p>
+        <section className="border-b border-white/10 py-8">
+          <p className="mb-4 text-lg font-semibold text-white">Conversation themes</p>
+          {summary.themes.length > 0 ? (
             <div className="grid gap-2 sm:grid-cols-2">
               {summary.themes.slice(0, 6).map((theme) => (
                 <div
@@ -222,20 +228,30 @@ export default function ReviewPage() {
                 </div>
               ))}
             </div>
-          </section>
-        )}
+          ) : (
+            <p className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-400">
+              We did not find strong themes in the upload. You can still generate a lesson from interests and vocabulary.
+            </p>
+          )}
+        </section>
 
         <section className="pt-8">
           <p className="mb-4 text-lg font-semibold text-white">Sample vocabulary</p>
-          <div className="flex flex-wrap gap-2">
-            {summary.vocabulary.slice(0, 12).map((item) => (
-              <Chip key={`${item.source}-${item.target}`} className="border-white/10 bg-white/[0.04] text-slate-300">
-                {item.source}
-                <span className="text-slate-600">→</span>
-                {item.target}
-              </Chip>
-            ))}
-          </div>
+          {summary.vocabulary.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {summary.vocabulary.slice(0, 12).map((item) => (
+                <Chip key={`${item.source}-${item.target}`} className="border-white/10 bg-white/[0.04] text-slate-300">
+                  {item.source}
+                  <span className="text-slate-600">→</span>
+                  {item.target}
+                </Chip>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-400">
+              No vocabulary pairs were extracted. Orion can still create a lesson, but adding vocabulary in settings later will improve matching exercises.
+            </p>
+          )}
         </section>
 
         <div className="mt-8 flex flex-col gap-2 rounded-xl border border-amber-500/15 bg-amber-500/[0.06] p-4 sm:flex-row sm:items-start sm:gap-3">
@@ -248,7 +264,7 @@ export default function ReviewPage() {
         </div>
 
         {(extractionError || generationError) && (
-          <div className="mt-6 space-y-2">
+          <div className="mt-6 space-y-2" role="status" aria-live="polite">
             {extractionError && (
               <p className="rounded-lg border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                 {extractionError}
@@ -258,6 +274,17 @@ export default function ReviewPage() {
               <p className="rounded-lg border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
                 {generationError}
               </p>
+            )}
+            {generationError && (
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full sm:w-auto"
+                disabled={isGenerating}
+                onClick={handleGenerateLessons}
+              >
+                Retry lesson generation
+              </Button>
             )}
           </div>
         )}
@@ -274,8 +301,8 @@ export default function ReviewPage() {
           </Button>
           <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
             <Button className="w-full gap-2 sm:w-auto sm:min-w-[220px]" disabled={isGenerating} onClick={handleGenerateLessons}>
-              Generate my lessons
-              <span aria-hidden>→</span>
+              {isGenerating ? "Generating lesson..." : "Generate my lessons"}
+              {!isGenerating && <span aria-hidden>→</span>}
             </Button>
             <p className="text-center text-xs text-slate-500 sm:text-right">You&apos;ll be taken to your home page next.</p>
           </div>

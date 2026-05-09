@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   compareAnswerParts,
+  evaluateAcceptedAnswers,
   evaluateAnswer,
   generateLessonPlan,
+  getAcceptedTranslateAnswers,
   updateProgressAfterExercise
 } from "../lib/lessonEngine";
 import { calculateStreakDays, getLocalDateKey, markLessonActivity } from "../lib/progress";
@@ -61,6 +63,24 @@ describe("lessonEngine", () => {
     expect(
       evaluateAnswer("Termine mi proyecto de programacion tarde anoche.", "Termine mi proyecto de programacion tarde anoche")
     ).toBe(true);
+  });
+
+  it("accepts configured translation alternatives", () => {
+    const acceptedAnswers = getAcceptedTranslateAnswers({
+      answer: "Yo quiero cocinar pasta en un restaurante.",
+      acceptedAnswers: ["Quiero cocinar pasta en un restaurante."]
+    }, "Spanish");
+
+    expect(evaluateAcceptedAnswers("Quiero cocinar pasta en un restaurante.", acceptedAnswers)).toBe(true);
+  });
+
+  it("accepts omitted subject pronouns for pro-drop translation languages", () => {
+    const acceptedAnswers = getAcceptedTranslateAnswers({
+      answer: "Yo quiero cocinar pasta en un restaurante."
+    }, "Spanish");
+
+    expect(acceptedAnswers).toContain("quiero cocinar pasta en un restaurante.");
+    expect(evaluateAcceptedAnswers("Quiero cocinar pasta en un restaurante.", acceptedAnswers)).toBe(true);
   });
 
   it("accepts a single typo for longer words", () => {

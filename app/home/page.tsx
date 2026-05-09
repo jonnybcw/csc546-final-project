@@ -18,6 +18,18 @@ const STAR_POINTS = Array.from({ length: 46 }, (_, index) => ({
   opacity: index % 4 === 0 ? 0.75 : 0.35
 }));
 
+function getTimeBasedGreeting() {
+  const hour = new Date().getHours();
+
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function isEvening() {
+  return new Date().getHours() >= 17;
+}
+
 export default function HomePage() {
   const router = useRouter();
   const summary = useOrionStore((state) => state.summary);
@@ -80,6 +92,8 @@ export default function HomePage() {
   }
 
   const firstName = userFullName?.trim().split(/\s+/)[0] ?? "";
+  const greeting = getTimeBasedGreeting();
+  const greetingIcon = isEvening() ? "🌙" : "☀️";
 
   return (
     <AppShell active="home">
@@ -87,14 +101,14 @@ export default function HomePage() {
         <header className="mb-10 flex items-center justify-between gap-6">
           <div>
             <h1 className="flex items-center gap-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              Good evening{firstName ? `, ${firstName}!` : ""}
-              <CrescentIcon />
+              {greeting}{firstName ? `, ${firstName}!` : ""}
+              <span aria-hidden>{greetingIcon}</span>
             </h1>
             <p className="mt-2 text-sm text-slate-300 sm:text-base">Let&apos;s continue your learning journey.</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="hidden items-center gap-2 text-sm text-slate-300 sm:flex">
-              <FlameIcon />
+              <span aria-hidden>🔥</span>
               {progress.streakDays} day streak
             </div>
           </div>
@@ -139,24 +153,6 @@ export default function HomePage() {
         </Card>
       </section>
     </AppShell>
-  );
-}
-
-function CrescentIcon() {
-  return (
-    <span className="relative h-7 w-7 shrink-0 rounded-full bg-amber-300" aria-hidden>
-      <span className="absolute -right-1 -top-1 h-7 w-7 rounded-full bg-[#020514]" />
-    </span>
-  );
-}
-
-function FlameIcon() {
-  return (
-    <svg className="h-5 w-5 text-amber-400" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <title>Streak</title>
-      <path d="M12.7 2.4c.5 2.9-.5 4.7-2 6.5-1.4 1.7-2.8 3.3-2.1 5.8.5-1.2 1.4-2.1 2.5-2.7 3.4 2.2 2.1 5.7.1 7.2 3.7-.3 6.6-2.9 6.6-6.8 0-3.8-2.4-6.8-5.1-10Z" />
-      <path d="M8.8 16.6c0 2 1.4 3.4 3.2 3.4s3.2-1.3 3.2-3.4c0-1.5-.8-2.6-2.2-3.7-.1 1.3-.8 2.1-1.7 2.9-.7.6-1.2 1.2-1.2 2.1-.5-.4-.9-.8-1.3-1.3Z" />
-    </svg>
   );
 }
 

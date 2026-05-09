@@ -545,18 +545,10 @@ export default function LessonPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-5xl flex-col px-4 py-5 sm:px-8">
-      <header className="grid flex-none grid-cols-[1fr_auto_1fr] items-start gap-4">
-        <button
-          type="button"
-          className="flex items-center gap-3 text-left text-slate-100 transition hover:text-white"
-          aria-label="Exit lesson"
-          onClick={() => router.push("/home")}
-        >
-          <span className="text-2xl leading-none text-slate-300">x</span>
-          <OrionLogo priority className="w-28" />
-        </button>
+      <header className="grid flex-none grid-cols-[auto_1fr_auto] items-start gap-4">
+        <OrionLogo priority className="w-28" />
 
-        <div className="w-72 max-w-[42vw] pt-1 text-center">
+        <div className="w-72 max-w-[42vw] justify-self-center pt-1 text-center">
           <p className="mb-4 text-sm font-medium text-slate-200 sm:text-base">
             Step {exerciseIndex + 1} of {totalSteps}
           </p>
@@ -572,10 +564,22 @@ export default function LessonPage() {
           </div>
         </div>
 
-        <p className="justify-self-end pt-2 text-sm font-medium text-slate-100 sm:text-base">
-          <span className="mr-2 inline-block size-2 rounded-full bg-amber-300 shadow-[0_0_14px_rgba(252,211,77,0.9)]" aria-hidden="true" />
-          {progress.streakDays} day streak
-        </p>
+        <div className="flex items-center justify-self-end gap-3">
+          <p className="hidden pt-2 text-sm font-medium text-slate-100 sm:block sm:text-base">
+            <span className="mr-2" aria-hidden="true">🔥</span>
+            {progress.streakDays} day streak
+          </p>
+          <button
+            type="button"
+            className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-slate-200 shadow-[0_10px_30px_rgba(0,0,0,0.24)] backdrop-blur transition hover:border-white/20 hover:bg-white/[0.12] hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400/70 focus:ring-offset-2 focus:ring-offset-[#040918]"
+            aria-label="Exit lesson"
+            onClick={() => router.push("/home")}
+          >
+            <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       <Card className="relative mt-8 flex flex-1 flex-col overflow-hidden rounded-[28px] border-slate-700/80 bg-[linear-gradient(180deg,rgba(7,13,31,0.98),rgba(4,9,24,0.98))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:p-10">

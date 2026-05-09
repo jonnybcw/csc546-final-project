@@ -18,7 +18,7 @@ function delay(ms: number): Promise<void> {
 
 function ConstellationGraphic() {
   return (
-    <div className="relative mx-auto mt-10 h-40 w-full max-w-md" aria-hidden>
+    <div className="relative mx-auto mt-8 h-32 w-full max-w-md sm:mt-10 sm:h-40" aria-hidden>
       <svg viewBox="0 0 240 140" className="h-full w-full opacity-90">
         <title>Decoration</title>
         <ellipse cx="120" cy="95" rx="100" ry="28" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
@@ -156,7 +156,7 @@ export default function ProcessingPage() {
         <p className="text-violet-300" aria-hidden>
           ✦ ✦
         </p>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+        <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white sm:text-4xl">
           <span className="bg-gradient-to-r from-violet-400 to-indigo-300 bg-clip-text text-transparent">
             Analyzing
           </span>{" "}
@@ -170,7 +170,7 @@ export default function ProcessingPage() {
 
       <ConstellationGraphic />
 
-      <Card className="mx-auto mt-8 flex max-w-lg flex-col gap-3 border-white/10 bg-white/[0.03] px-5 py-4 sm:flex-row sm:items-start sm:gap-4">
+      <Card className="mx-auto mt-6 flex max-w-lg flex-col gap-3 border-white/10 bg-white/[0.03] px-4 py-4 sm:mt-8 sm:flex-row sm:items-start sm:gap-4 sm:px-5">
         <span className="text-xl text-slate-400" aria-hidden>
           ◷
         </span>
@@ -180,8 +180,8 @@ export default function ProcessingPage() {
         </p>
       </Card>
 
-      <Card className="mx-auto mt-6 max-w-lg border-white/10 p-5">
-        <div className="flex gap-4">
+      <Card className="mx-auto mt-6 max-w-lg border-white/10 p-4 sm:p-5">
+        <div className="flex gap-3 sm:gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-violet-400/25 bg-violet-500/10">
             <span className="h-8 w-8 animate-spin rounded-full border-2 border-violet-400/30 border-t-violet-400" />
           </div>
@@ -203,9 +203,9 @@ export default function ProcessingPage() {
         </div>
       </Card>
 
-      <Card className="mx-auto mt-4 max-w-lg border-white/[0.08] bg-white/[0.02] p-5">
+      <Card className="mx-auto mt-4 max-w-lg border-white/[0.08] bg-white/[0.02] p-4 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 min-[420px]:flex-row">
             <span className="text-lg text-slate-500" aria-hidden>
               🔒
             </span>

@@ -12,7 +12,7 @@ export default async function AuthCallbackPage({
   const nextPath = params.next && params.next.startsWith("/") ? params.next : "/language";
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl items-center px-6 py-10">
+    <main className="mx-auto flex min-h-screen max-w-xl items-center px-4 py-8 sm:px-6 sm:py-10">
       <AuthCallbackClient
         code={params.code ?? null}
         nextPath={nextPath}

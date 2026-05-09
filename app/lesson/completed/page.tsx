@@ -12,7 +12,7 @@ export default function LessonCompletedPage() {
 
   if (!lesson) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-3xl items-center px-6 py-20 text-center">
+      <main className="mx-auto flex min-h-dvh max-w-3xl items-center px-4 py-12 text-center sm:px-6 sm:py-20">
         <Card className="w-full">
           <p className="text-xl font-semibold text-white">No completed lesson yet</p>
           <p className="mt-2 text-slate-400">Start a lesson from home when you are ready to practice.</p>
@@ -25,15 +25,15 @@ export default function LessonCompletedPage() {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#020514] px-6 py-12 text-slate-100">
-      <Card className="w-full max-w-2xl text-center">
+    <main className="flex min-h-dvh items-center justify-center bg-[#020514] px-4 py-10 text-slate-100 sm:px-6 sm:py-12">
+      <Card className="w-full max-w-2xl p-6 text-center sm:p-8">
         <div className="mx-auto grid size-12 place-items-center rounded-full bg-emerald-400 text-2xl font-bold text-slate-950">
           ✓
         </div>
         <p className="mt-5 text-sm font-semibold uppercase tracking-[0.16em] text-emerald-200">
           Lesson complete
         </p>
-        <h1 className="mt-6 text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl">
+        <h1 className="mt-6 text-2xl font-semibold leading-tight tracking-tight text-white sm:text-4xl">
           Nice work finishing {lesson.title}
         </h1>
 

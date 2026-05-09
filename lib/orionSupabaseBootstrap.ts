@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getLocalDateKey, LESSON_COMPLETION_EVENT_ID, withLessonActivityDates } from "@/lib/progress";
 import { useOrionStore } from "@/store/orionStore";
-import type { ContextSummary, LessonPlan, TextRecord } from "@/types/orion";
+import type { ContextSource, ContextSummary, LessonPlan, TextRecord } from "@/types/orion";
 
 function isContextSummary(x: unknown): x is ContextSummary {
   return (
@@ -27,6 +27,10 @@ function isLessonPlan(x: unknown): x is LessonPlan {
     typeof (x as LessonPlan).title === "string" &&
     Array.isArray((x as LessonPlan).exercises)
   );
+}
+
+function isContextSource(x: unknown): x is ContextSource {
+  return x === "ai" || x === "manual";
 }
 
 function getAuthDisplayName(userMetadata: Record<string, unknown> | undefined): string | null {
@@ -88,7 +92,7 @@ export async function syncOrionStateFromSupabase(supabase: SupabaseClient): Prom
 
     const { data: contextRows, error: contextError } = await supabase
       .from("context_profiles")
-      .select("summary_json, raw_records_json")
+      .select("source, summary_json, raw_records_json")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1);
@@ -103,6 +107,7 @@ export async function syncOrionStateFromSupabase(supabase: SupabaseClient): Prom
 
     const summary = ctxRow.summary_json;
     const records = ctxRow.raw_records_json;
+    const extractionSource = ctxRow.source;
     if (!isContextSummary(summary) || !isTextRecordArray(records)) {
       console.warn("[Orion] Invalid context JSON from server");
       return false;
@@ -151,7 +156,8 @@ export async function syncOrionStateFromSupabase(supabase: SupabaseClient): Prom
       lesson,
       targetLanguage,
       userFullName: (syncedProfile?.full_name as string | null | undefined) ?? null,
-      progress
+      progress,
+      extractionSource: isContextSource(extractionSource) ? extractionSource : "ai"
     });
     return true;
   } catch (e) {

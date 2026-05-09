@@ -140,11 +140,11 @@ export default function HomePage() {
 
   return (
     <AppShell active="home">
-      <section className="px-6 py-8 sm:px-10 lg:px-12">
-        <header className="mb-10 flex items-center justify-between gap-6">
+      <section className="px-4 py-6 sm:px-10 sm:py-8 lg:px-12">
+        <header className="mb-8 flex flex-col gap-4 sm:mb-10 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
           <div>
-            <h1 className="flex items-center gap-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              {greeting}{firstName ? `, ${firstName}!` : ""}
+            <h1 className="flex flex-wrap items-center gap-x-3 gap-y-1 text-2xl font-semibold tracking-tight text-white sm:text-4xl">
+              <span>{greeting}{firstName ? `, ${firstName}!` : ""}</span>
               <span aria-hidden>{greetingIcon}</span>
             </h1>
             <p className="mt-2 text-sm text-slate-300 sm:text-base">Let&apos;s continue your learning journey.</p>
@@ -166,14 +166,14 @@ export default function HomePage() {
             <div className="absolute -bottom-24 right-[-72px] h-56 w-96 rounded-[50%] bg-[radial-gradient(circle_at_38%_15%,rgba(255,255,255,0.55),rgba(124,58,237,0.7)_18%,rgba(40,18,112,0.9)_38%,rgba(7,10,30,0)_62%)] blur-[1px]" />
           </div>
 
-          <div className="relative p-7 sm:p-9">
+          <div className="relative p-5 sm:p-9">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-300">Today&apos;s lesson</p>
-            <h2 className="mt-5 max-w-md text-3xl font-semibold leading-tight text-white sm:text-4xl">
+            <h2 className="mt-4 max-w-md text-2xl font-semibold leading-tight text-white sm:mt-5 sm:text-4xl">
               {activeLesson.title}
             </h2>
             <p className="mt-5 max-w-sm text-sm leading-7 text-slate-300">{activeLesson.description}</p>
 
-            <div className="mt-10 flex flex-col gap-5 sm:flex-row sm:items-center">
+            <div className="mt-8 flex flex-col gap-5 sm:mt-10 sm:flex-row sm:items-center">
               <Button className="inline-flex w-full items-center justify-center gap-6 px-7 py-4 text-base sm:w-auto" onClick={() => router.push("/lesson")}>
                 Start Lesson
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15" aria-hidden>
@@ -181,7 +181,7 @@ export default function HomePage() {
                 </span>
               </Button>
 
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-slate-300">
+              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-slate-300 sm:justify-start">
                 <span className="inline-flex items-center gap-2">
                   <ClockIcon />
                   {activeLesson.durationMinutes}-{activeLesson.durationMinutes + 5} min

@@ -41,7 +41,7 @@ export function Dialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-slate-950/75 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 grid items-end bg-slate-950/75 px-4 py-4 backdrop-blur-sm sm:place-items-center sm:py-8"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onOpenChange(false);
@@ -53,7 +53,7 @@ export function Dialog({
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         className={cn(
-          "relative w-full max-w-md overflow-hidden rounded-[28px] border border-violet-300/20 bg-[linear-gradient(180deg,rgba(17,24,50,0.98),rgba(7,13,31,0.98))] p-6 text-center shadow-[0_24px_90px_rgba(0,0,0,0.45)]",
+          "relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-[24px] border border-violet-300/20 bg-[linear-gradient(180deg,rgba(17,24,50,0.98),rgba(7,13,31,0.98))] p-5 text-center shadow-[0_24px_90px_rgba(0,0,0,0.45)] sm:rounded-[28px] sm:p-6",
           className
         )}
       >
@@ -67,7 +67,7 @@ export function Dialog({
         )}
 
         <div className={cn("relative", icon ? "mt-5" : "")}>
-          <h2 id={titleId} className="text-2xl font-semibold tracking-tight text-white">
+          <h2 id={titleId} className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
             {title}
           </h2>
           {description && (

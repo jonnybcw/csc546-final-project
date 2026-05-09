@@ -10,8 +10,8 @@ export default async function SupabaseExamplePage() {
   const { data: todos, error } = await supabase.from("todos").select();
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-10">
-      <h1 className="mb-4 text-2xl font-semibold">Supabase Todos Example</h1>
+    <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-10">
+      <h1 className="mb-4 text-xl font-semibold sm:text-2xl">Supabase Todos Example</h1>
       {error ? (
         <Card className="border-rose-400/25 bg-rose-500/[0.06] p-5" role="alert">
           <p className="font-semibold text-rose-100">Could not load todos</p>

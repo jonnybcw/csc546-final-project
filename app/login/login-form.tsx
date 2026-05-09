@@ -39,9 +39,9 @@ export function LoginForm({ nextPath, initialError }: { nextPath: string; initia
   }
 
   return (
-    <Card className="w-full space-y-5 p-8">
+    <Card className="w-full space-y-5 p-6 sm:p-8">
       <div>
-        <p className="text-3xl font-semibold">Sign in to Orion</p>
+        <p className="text-2xl font-semibold sm:text-3xl">Sign in to Orion</p>
         <p className="mt-2 text-sm text-slate-300">
           Continue with your Google account. No password required.
         </p>

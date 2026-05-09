@@ -29,7 +29,7 @@ export async function DELETE() {
     const rawMessage = error instanceof Error ? error.message : "Failed to delete account";
     const missingServiceRole = rawMessage.includes("SUPABASE_SERVICE_ROLE_KEY");
     const message = missingServiceRole
-      ? "Account deletion requires SUPABASE_SERVICE_ROLE_KEY to be configured."
+      ? "Account deletion requires a real SUPABASE_SERVICE_ROLE_KEY in .env.local. Replace the placeholder value and restart the dev server."
       : rawMessage;
     const status = missingServiceRole ? 501 : 500;
     return NextResponse.json({ error: message }, { status });

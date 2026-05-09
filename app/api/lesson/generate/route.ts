@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { generateDailyLessonWithAI } from "@/lib/aiLesson";
+import { buildManualContextRecords } from "@/lib/manualContext";
 import { createSupabaseAdminClient, createSupabaseServerClient } from "@/lib/supabase/server";
-import type { ContextSummary, ProgressSnapshot } from "@/types/orion";
+import type { ContextSource, ContextSummary, ProgressSnapshot } from "@/types/orion";
 
 const RequestSchema = z.object({
   summary: z.custom<ContextSummary>(),
   progress: z.custom<ProgressSnapshot>(),
-  targetLanguage: z.string().optional()
+  targetLanguage: z.string().optional(),
+  contextSource: z.enum(["ai", "manual"]).optional()
 });
 
 export async function POST(request: Request) {
@@ -24,6 +26,7 @@ export async function POST(request: Request) {
     }
 
     const targetLanguage = payload.targetLanguage?.trim() || "Spanish";
+    const contextSource: ContextSource = payload.contextSource ?? "manual";
     const { lesson, source } = await generateDailyLessonWithAI(payload.summary, payload.progress, targetLanguage);
 
     let dbClient = supabase;
@@ -52,6 +55,16 @@ export async function POST(request: Request) {
         .eq("id", latestContextId)
         .eq("user_id", user.id);
       if (contextUpdateError) throw new Error(contextUpdateError.message);
+    } else {
+      const { error: contextInsertError } = await dbClient.from("context_profiles").insert({
+        user_id: user.id,
+        source: contextSource,
+        total_entries: payload.summary.totalEntries,
+        summary_json: payload.summary,
+        raw_records_json: buildManualContextRecords(payload.summary.interests),
+        created_at: new Date().toISOString()
+      });
+      if (contextInsertError) throw new Error(contextInsertError.message);
     }
 
     const { error: profileError } = await dbClient.from("profiles").upsert(

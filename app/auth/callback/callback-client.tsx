@@ -100,14 +100,14 @@ export function AuthCallbackClient({
   }, [code, nextPath, router, supabase]);
 
   return (
-    <Card className="w-full space-y-4 p-8">
-      <p className="text-2xl font-semibold">Completing sign in...</p>
+    <Card className="w-full space-y-4 p-6 sm:p-8">
+      <p className="text-xl font-semibold sm:text-2xl">Completing sign in...</p>
       {!error ? (
         <p className="text-sm text-slate-300">Please wait while we finish Google sign-in.</p>
       ) : (
         <>
           <p className="rounded-lg bg-rose-500/15 px-3 py-2 text-sm text-rose-100">{error}</p>
-          <Button onClick={() => router.replace("/login?error=auth_callback_failed")}>
+          <Button className="w-full sm:w-auto" onClick={() => router.replace("/login?error=auth_callback_failed")}>
             Back to login
           </Button>
         </>

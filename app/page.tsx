@@ -10,54 +10,56 @@ const startHref = "/login?next=/language";
 export default function LandingPage() {
   return (
     <main className="min-h-screen text-slate-100">
-      <div className="mx-auto max-w-6xl px-5 pb-16 pt-8 md:px-8">
-        <header className="mb-12 flex flex-col gap-6 sm:mb-16 md:flex-row md:items-center md:justify-between">
-          <OrionLogo priority className="w-40" />
-          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-slate-400">
-            <a className="hover:text-white" href="#how">
+      <div className="mx-auto max-w-6xl px-4 pb-14 pt-6 sm:px-5 sm:pb-16 sm:pt-8 md:px-8">
+        <header className="mb-10 grid grid-cols-[auto_auto] items-center justify-between gap-x-3 gap-y-4 sm:mb-16 sm:grid-cols-[auto_1fr_auto]">
+          <div className="flex shrink-0 items-center">
+            <OrionLogo priority className="w-28 sm:w-36 lg:w-40" />
+          </div>
+          <nav className="hidden min-w-0 flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-slate-400 sm:flex lg:gap-x-6">
+            <a className="shrink-0 hover:text-white" href="#how">
               How it works
             </a>
-            <a className="hover:text-white" href="#features">
+            <a className="shrink-0 hover:text-white" href="#features">
               Features
             </a>
-            <a className="hover:text-white" href="#for-who">
+            <a className="shrink-0 hover:text-white" href="#for-who">
               For who?
             </a>
-            <a className="hover:text-white" href="#privacy">
+            <a className="shrink-0 hover:text-white" href="#privacy">
               Privacy
             </a>
-            <a className="hover:text-white" href="#faq">
+            <a className="shrink-0 hover:text-white" href="#faq">
               FAQ
             </a>
           </nav>
-          <div className="flex items-center justify-center gap-3 md:justify-end">
-            <Link className="text-sm text-slate-300 hover:text-white" href="/login">
+          <div className="flex min-w-max shrink-0 items-center justify-end gap-4 sm:gap-5">
+            <Link className="inline-flex min-h-11 items-center whitespace-nowrap text-sm text-slate-300 hover:text-white" href="/login">
               Log in
             </Link>
             <Link href={startHref}>
-              <Button className="whitespace-nowrap px-5">Get Started</Button>
+              <Button className="whitespace-nowrap px-4 sm:px-5">Get Started</Button>
             </Link>
           </div>
         </header>
 
-        <section className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+        <section className="grid items-center gap-8 sm:gap-12 lg:grid-cols-2 lg:gap-16">
           <div className="order-2 lg:order-1">
-            <h1 className="text-4xl font-semibold leading-[1.12] tracking-tight sm:text-5xl">
+            <h1 className="text-center text-4xl font-semibold leading-[1.12] tracking-tight sm:text-5xl lg:text-left">
               Learn languages through{" "}
               <span className="bg-gradient-to-r from-violet-400 to-sky-400 bg-clip-text text-transparent">
                 your world.
               </span>
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">
+            <p className="mx-auto mt-5 max-w-xl text-center text-base leading-relaxed text-slate-400 sm:text-lg lg:mx-0 lg:text-left">
               Orion turns your real conversations and interests into personalized daily lessons—so you
               practice what actually matters to you.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link href={startHref}>
-                <Button className="px-7 py-3.5 text-base">Get Started — It&apos;s free</Button>
+            <div className="mt-8 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-center lg:justify-start">
+              <Link href={startHref} className="w-full sm:w-auto">
+                <Button className="w-full px-7 py-3.5 text-base sm:w-auto">Get Started — It&apos;s free</Button>
               </Link>
               <a
-                className="inline-flex items-center gap-2 text-sm font-medium text-violet-300/90 hover:text-violet-200"
+                className="inline-flex min-h-11 items-center justify-center gap-2 text-sm font-medium text-violet-300/90 hover:text-violet-200 sm:justify-start"
                 href="#how"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/5">
@@ -69,7 +71,7 @@ export default function LandingPage() {
                 See how it works
               </a>
             </div>
-            <div className="mt-8 flex items-center gap-3 text-sm text-slate-500">
+            <div className="mt-8 flex flex-col items-center gap-3 text-center text-sm text-slate-500 sm:flex-row sm:justify-center sm:text-left lg:justify-start">
               <div className="flex -space-x-2" aria-hidden>
                 {["bg-violet-500", "bg-sky-500", "bg-amber-500"].map((c) => (
                   <span key={c} className={`inline-block h-8 w-8 rounded-full border-2 border-[#040817] ${c}`} />
@@ -85,10 +87,10 @@ export default function LandingPage() {
           </div>
 
           <div className="order-1 lg:order-2">
-            <Card className="relative overflow-hidden p-6 sm:p-7">
+            <Card className="relative overflow-hidden p-5 sm:p-7">
               <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-indigo-500/10 blur-3xl" aria-hidden />
               <div className="relative">
-                <div className="mb-5 flex items-center justify-between gap-3">
+                <div className="mb-5 flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
                   <p className="text-sm font-medium text-slate-300">Today&apos;s Lesson</p>
                   <Chip className="gap-1.5 border-orange-500/20 bg-orange-500/10 text-orange-200">
                     <span aria-hidden>🔥</span>
@@ -121,7 +123,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="how" className="mt-24 scroll-mt-24 md:mt-32">
+        <section id="how" className="mt-20 scroll-mt-24 md:mt-32">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-400">How Orion works</p>
           <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">Personalized lessons in 3 simple steps</h2>
           <div className="mt-10 grid gap-6 md:grid-cols-3 md:gap-4">
@@ -191,7 +193,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="for-who" className="mt-24 scroll-mt-24 md:mt-32">
+        <section id="for-who" className="mt-20 scroll-mt-24 md:mt-32">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-400">Who it&apos;s for</p>
           <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">Designed for learners who already know the basics</h2>
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -231,7 +233,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="features" className="mt-24 scroll-mt-24 md:mt-32">
+        <section id="features" className="mt-20 scroll-mt-24 md:mt-32">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-400">Features</p>
           <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">Built around your real life</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -249,7 +251,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="privacy" className="mt-24 scroll-mt-24 md:mt-32">
+        <section id="privacy" className="mt-20 scroll-mt-24 md:mt-32">
           <Card className="border-sky-500/15 bg-sky-500/[0.04] p-6 sm:p-8">
             <h2 className="text-xl font-semibold sm:text-2xl">Your data, your control</h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-400">
@@ -259,7 +261,7 @@ export default function LandingPage() {
           </Card>
         </section>
 
-        <section id="faq" className="mt-24 scroll-mt-24 md:mt-32">
+        <section id="faq" className="mt-20 scroll-mt-24 md:mt-32">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-400">FAQ</p>
           <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">Common questions</h2>
           <div className="mt-8 space-y-3">
@@ -295,8 +297,8 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="mt-24 md:mt-32">
-          <Card className="relative overflow-hidden border-indigo-500/20 bg-[linear-gradient(135deg,rgba(30,27,75,0.5),rgba(15,23,42,0.95))] p-8 sm:p-10">
+        <section className="mt-20 md:mt-32">
+          <Card className="relative overflow-hidden border-indigo-500/20 bg-[linear-gradient(135deg,rgba(30,27,75,0.5),rgba(15,23,42,0.95))] p-6 sm:p-10">
             <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-violet-500/20 blur-3xl" />
             <div className="pointer-events-none absolute bottom-0 left-1/4 h-32 w-64 rounded-full bg-indigo-500/10 blur-2xl" />
             <div className="relative flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
@@ -306,8 +308,8 @@ export default function LandingPage() {
                   Import your context and get your first personalized lesson in minutes.
                 </p>
               </div>
-              <Link href={startHref} className="shrink-0">
-                <Button className="inline-flex items-center gap-2 px-6 py-3.5 text-base">
+              <Link href={startHref} className="w-full shrink-0 md:w-auto">
+                <Button className="w-full gap-2 px-6 py-3.5 text-base md:w-auto">
                   Get Started — It&apos;s free
                   <span aria-hidden>→</span>
                 </Button>

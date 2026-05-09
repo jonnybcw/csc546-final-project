@@ -6,7 +6,14 @@ import { persist } from "zustand/middleware";
 import { updateProgressAfterExercise } from "@/lib/lessonEngine";
 import { mergeContextSummary } from "@/lib/mergeContext";
 import { markLessonActivity, withLessonActivityDates } from "@/lib/progress";
-import type { ContextSummary, LessonPlan, ProcessingStep, ProgressSnapshot, TextRecord } from "@/types/orion";
+import type {
+  ContextSource,
+  ContextSummary,
+  LessonPlan,
+  ProcessingStep,
+  ProgressSnapshot,
+  TextRecord
+} from "@/types/orion";
 
 export const ORION_STORE_STORAGE_KEY = "orion-store-v1";
 
@@ -68,7 +75,7 @@ interface OrionState {
   lesson: LessonPlan | null;
   progress: ProgressSnapshot;
   processingSteps: ProcessingStep[];
-  extractionSource: "ai" | null;
+  extractionSource: ContextSource | null;
   lessonSource: "ai" | null;
   extractionError: string | null;
   lessonError: string | null;
@@ -91,8 +98,9 @@ interface OrionState {
     fileName: string,
     records: TextRecord[],
     summary: ContextSummary,
-    source: "ai"
+    source: ContextSource
   ) => void;
+  setManualContext: (summary: ContextSummary, records: TextRecord[]) => void;
   setProcessingStepStatus: (id: string, status: ProcessingStep["status"]) => void;
   addInterest: (interest: string) => void;
   removeInterest: (interest: string) => void;
@@ -110,6 +118,7 @@ interface OrionState {
     targetLanguage: string | null;
     userFullName?: string | null;
     progress?: ProgressSnapshot;
+    extractionSource?: ContextSource | null;
   }) => void;
 }
 
@@ -180,6 +189,22 @@ export const useOrionStore = create<OrionState>()(
             lesson: null
           };
         }),
+      setManualContext: (summary, records) =>
+        set(() => ({
+          records,
+          summary,
+          processingSteps: DEFAULT_STEPS,
+          extractionSource: "manual",
+          extractionError: null,
+          pendingUploadFile: null,
+          uploadInProgress: false,
+          uploadStarted: false,
+          uploadError: null,
+          lastUploadedFileName: null,
+          lesson: null,
+          lessonSource: null,
+          lessonError: null
+        })),
       setProcessingStepStatus: (id, status) =>
         set((state) => ({
           processingSteps: state.processingSteps.map((step) =>
@@ -253,7 +278,7 @@ export const useOrionStore = create<OrionState>()(
           summary: payload.summary,
           lesson: payload.lesson,
           progress: payload.progress ? normalizeProgress(payload.progress) : state.progress,
-          extractionSource: payload.summary ? "ai" : null,
+          extractionSource: payload.extractionSource ?? (payload.summary ? "ai" : null),
           lessonSource: payload.lesson ? "ai" : null,
           extractionError: null,
           lessonError: null,

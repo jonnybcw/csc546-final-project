@@ -19,6 +19,7 @@ import { useOrionStore } from "@/store/orionStore";
 import type { LessonExercise, VocabularyPair } from "@/types/orion";
 
 const BLANK_PATTERN = /_{3,}|\[blank\]|\{\{blank\}\}/gi;
+const CORRECT_FEEDBACK_MS = 1500;
 
 function getFillBlankPromptSegments(prompt: string, answer: string): string[] {
   const displayPrompt = prompt
@@ -110,6 +111,10 @@ function getCompletedFillBlankAnswer(segments: string[], answers: string[], fall
     const answer = answers[index] ? `${answers[index]}` : "";
     return `${result}${segment}${answer}`;
   }, "");
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 interface LabelledItem {
@@ -397,9 +402,7 @@ export default function LessonPage() {
     : isVocabularyExercise
       ? expectedVocabularyMatchText
       : closestTranslateAnswer || exercise.answer;
-  const acceptedAnswerText = acceptedTranslateAnswers.length > 1
-    ? acceptedTranslateAnswers.join(" / ")
-    : expectedAnswerText;
+  const hintAnswerText = closestTranslateAnswer || acceptedTranslateAnswers[0] || exercise.answer;
   const shouldShowSupportArea = isTranslateExercise || feedback === "incorrect" || Boolean(progressSyncError);
   const exerciseLabel =
     exercise.type === "translate" ? "Translate" : exercise.type === "fill_blank" ? "Fill in the blanks" : "Match the words";
@@ -531,11 +534,16 @@ export default function LessonPage() {
     const correct = evaluateCurrentAnswer();
     setFeedback(correct ? "correct" : "incorrect");
     submitExerciseResult(correct);
-    await sendProgressEvent({
+    const progressEventPromise = sendProgressEvent({
       lessonTitle: activeLesson.title,
       exerciseId: exercise.id,
       correct
     });
+    if (correct) {
+      await Promise.all([progressEventPromise, wait(CORRECT_FEEDBACK_MS)]);
+    } else {
+      await progressEventPromise;
+    }
     return correct;
   }
 
@@ -618,11 +626,11 @@ export default function LessonPage() {
   }));
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-5xl flex-col px-4 py-5 sm:px-8">
-      <header className="grid flex-none grid-cols-[auto_1fr_auto] items-center gap-4">
-        <OrionLogo priority className="w-28 shrink-0" />
+    <main className="mx-auto flex min-h-dvh max-w-5xl flex-col px-3 py-4 sm:px-8 sm:py-5">
+      <header className="grid flex-none grid-cols-[1fr_auto] items-center gap-3 sm:grid-cols-[auto_1fr_auto] sm:gap-4">
+        <OrionLogo priority className="w-24 shrink-0 sm:w-28" />
 
-        <div className="w-72 max-w-[42vw] justify-self-center">
+        <div className="order-3 col-span-2 w-full justify-self-center sm:order-none sm:col-span-1 sm:w-72 sm:max-w-[42vw]">
           <div className="flex items-center gap-2">
             {exerciseQueue.map((queuedExercise, index) => (
               <div key={queuedExercise.id} className="h-2 flex-1 overflow-hidden rounded-full bg-slate-700/60">
@@ -635,14 +643,14 @@ export default function LessonPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-self-end gap-5">
+        <div className="flex items-center justify-self-end gap-3 sm:gap-5">
           <p className="hidden items-center gap-2 whitespace-nowrap text-sm font-medium leading-none text-slate-100 sm:flex sm:text-base">
             <span aria-hidden="true">🔥</span>
             <span>{progress.streakDays} day streak</span>
           </p>
           <button
             type="button"
-            className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-slate-200 shadow-[0_10px_30px_rgba(0,0,0,0.24)] backdrop-blur transition hover:border-white/20 hover:bg-white/[0.12] hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400/70 focus:ring-offset-2 focus:ring-offset-[#040918]"
+            className="grid size-10 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-slate-200 shadow-[0_10px_30px_rgba(0,0,0,0.24)] backdrop-blur transition hover:border-white/20 hover:bg-white/[0.12] hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400/70 focus:ring-offset-2 focus:ring-offset-[#040918] sm:size-11"
             aria-label="Exit lesson"
             onClick={handleExitLesson}
           >
@@ -653,7 +661,7 @@ export default function LessonPage() {
         </div>
       </header>
 
-      <Card className="relative mt-8 flex flex-1 flex-col overflow-hidden rounded-[28px] border-slate-700/80 bg-[linear-gradient(180deg,rgba(7,13,31,0.98),rgba(4,9,24,0.98))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:p-10">
+      <Card className="relative mt-5 flex flex-1 flex-col overflow-hidden rounded-[24px] border-slate-700/80 bg-[linear-gradient(180deg,rgba(7,13,31,0.98),rgba(4,9,24,0.98))] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:mt-8 sm:rounded-[28px] sm:p-10">
         <div className="pointer-events-none absolute right-8 top-8 hidden opacity-90 sm:block">
           <svg width="170" height="130" viewBox="0 0 170 130" fill="none" aria-hidden="true">
             <path d="M44 54L74 22L120 14L142 48L112 92H70L44 54Z" stroke="url(#lesson-constellation)" strokeWidth="1.3" />
@@ -682,21 +690,43 @@ export default function LessonPage() {
           </svg>
         </div>
 
+        {feedback === "correct" && (
+          <div
+            className="pointer-events-none absolute inset-0 z-20 grid place-items-center bg-slate-950/30 backdrop-blur-md"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="relative grid place-items-center">
+              <span className="absolute size-28 animate-ping rounded-full bg-emerald-400/20" aria-hidden="true" />
+              <span className="absolute size-40 animate-pulse rounded-full border border-emerald-300/25" aria-hidden="true" />
+              <div className="relative rounded-3xl border border-emerald-300/40 bg-emerald-500/20 px-10 py-8 text-center shadow-[0_0_60px_rgba(16,185,129,0.35)]">
+                <div className="mx-auto grid size-16 animate-bounce place-items-center rounded-full bg-emerald-400 text-3xl font-black text-slate-950">
+                  ✓
+                </div>
+                <p className="mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">Correct!</p>
+                <p className="mt-2 text-sm font-semibold uppercase tracking-[0.24em] text-emerald-100">
+                  Nice work
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <section className="relative z-10 flex min-h-0 flex-1 flex-col">
           <div className="max-w-2xl">
-            <p className="inline-flex items-center gap-2 rounded-xl bg-violet-500/20 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-violet-300">
+            <p className="inline-flex items-center gap-2 rounded-xl bg-violet-500/20 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-violet-300 sm:px-4 sm:text-sm">
               <span className="grid size-5 place-items-center rounded-md bg-violet-500/20 text-xs">{exerciseIcon}</span>
               {exerciseLabel}
             </p>
-            <h1 className="mt-7 text-3xl font-semibold tracking-tight text-white sm:text-4xl">{exerciseTitle}</h1>
+            <h1 className="mt-5 text-2xl font-semibold tracking-tight text-white sm:mt-7 sm:text-4xl">{exerciseTitle}</h1>
             <p className="mt-3 text-base text-slate-300">{exerciseSubtitle}</p>
           </div>
 
-          <div className="mt-8 flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto pr-1">
+          <div className="mt-6 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto pr-1 sm:mt-8 sm:gap-6">
             {isVocabularyExercise ? (
-              <div className="grid gap-8 sm:grid-cols-2">
+              <div className="grid gap-5 sm:grid-cols-2 sm:gap-8">
                 <div>
-                  <p className="mb-5 text-lg font-semibold text-slate-100">English</p>
+                  <p className="mb-3 text-base font-semibold text-slate-100 sm:mb-5 sm:text-lg">English</p>
                   <div className="space-y-3">
                     {vocabularyView.sourceItems.map((sourceItem) => {
                       const selectedTarget = vocabularyView.targetItems.find((targetItem) => targetItem.id === matchSelections[sourceItem.id]);
@@ -709,7 +739,7 @@ export default function LessonPage() {
                           key={sourceItem.id}
                           type="button"
                           className={[
-                            "flex min-h-16 w-full items-center justify-between rounded-xl border px-5 py-4 text-left text-base transition",
+                            "flex min-h-14 w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left text-sm transition sm:min-h-16 sm:px-5 sm:py-4 sm:text-base",
                             isSelected ? "border-violet-400 bg-violet-500/20 text-white" : "border-slate-700 bg-slate-950/30 text-slate-100 hover:border-violet-400/70",
                             isCorrect ? "border-emerald-300/60 bg-emerald-500/15 text-emerald-100" : "",
                             isWrong ? "border-rose-300/70 bg-rose-500/15 text-rose-100" : ""
@@ -726,7 +756,7 @@ export default function LessonPage() {
                 </div>
 
                 <div>
-                  <p className="mb-5 text-lg font-semibold text-slate-100">{activeLesson.targetLanguage}</p>
+                  <p className="mb-3 text-base font-semibold text-slate-100 sm:mb-5 sm:text-lg">{activeLesson.targetLanguage}</p>
                   <div className="space-y-3">
                     {vocabularyView.targetItems.map((targetItem) => {
                       const matchedSource = vocabularyView.sourceItems.find((sourceItem) => matchSelections[sourceItem.id] === targetItem.id);
@@ -738,7 +768,7 @@ export default function LessonPage() {
                           key={targetItem.id}
                           type="button"
                           className={[
-                            "flex min-h-16 w-full items-center justify-between rounded-xl border px-5 py-4 text-left text-base transition",
+                            "flex min-h-14 w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left text-sm transition sm:min-h-16 sm:px-5 sm:py-4 sm:text-base",
                             matchedSource ? "border-violet-400 bg-violet-500/20 text-white" : "border-slate-700 bg-slate-950/30 text-slate-100 hover:border-violet-400/70",
                             isCorrect ? "border-emerald-300/60 bg-emerald-500/15 text-emerald-100" : "",
                             isWrong ? "border-rose-300/70 bg-rose-500/15 text-rose-100" : "",
@@ -756,8 +786,8 @@ export default function LessonPage() {
                 </div>
               </div>
             ) : isFillBlankExercise ? (
-              <div className="pt-8">
-                <div className="text-2xl leading-[3.5rem] text-slate-100 sm:text-3xl">
+              <div className="pt-4 sm:pt-8">
+                <div className="text-xl leading-[3rem] text-slate-100 sm:text-3xl sm:leading-[3.5rem]">
                   {fillBlankPromptSegments.map((segment, segmentIndex) => {
                     const inputId = fillBlankInputIds[segmentIndex];
 
@@ -770,7 +800,7 @@ export default function LessonPage() {
                               fillBlankInputRefs.current[segmentIndex] = element;
                             }}
                             aria-label={`Blank ${segmentIndex + 1}`}
-                            className={`mx-2 inline-block h-12 w-40 border-0 border-b border-slate-300 bg-transparent px-2 text-center text-xl font-semibold outline-none transition placeholder:text-slate-500 sm:w-52 sm:text-2xl ${feedback === "incorrect" ? "text-rose-100" : "text-white"}`}
+                            className={`mx-1 inline-block h-11 w-[min(10rem,68vw)] border-0 border-b border-slate-300 bg-transparent px-2 text-center text-lg font-semibold outline-none transition placeholder:text-slate-500 sm:mx-2 sm:h-12 sm:w-52 sm:text-2xl ${feedback === "incorrect" ? "text-rose-100" : "text-white"}`}
                             placeholder={fillBlankPlaceholders[segmentIndex] ?? ""}
                             value={fillBlankInputValues[segmentIndex] ?? ""}
                             readOnly={feedback === "incorrect"}
@@ -785,23 +815,58 @@ export default function LessonPage() {
               </div>
             ) : (
               <>
-                <Card className="rounded-xl border-slate-700 bg-slate-950/35 p-6 text-lg text-slate-100 shadow-none">
+                <Card className="rounded-xl border-slate-700 bg-slate-950/35 p-4 text-base text-slate-100 shadow-none sm:p-6 sm:text-lg">
                   {exercise.prompt}
                 </Card>
-                <textarea
-                  className={`min-h-14 w-full resize-none rounded-xl border bg-slate-950/25 p-4 text-base text-white outline-none transition placeholder:text-slate-400 sm:min-h-[4.5rem] sm:text-lg ${feedbackStyle}`}
-                  placeholder={`Type your answer in ${activeLesson.targetLanguage}...`}
-                  value={input}
-                  readOnly={feedback === "incorrect"}
-                  onChange={(event) => setInput(event.target.value)}
-                  onKeyDown={handleTranslateKeyDown}
-                />
+                {feedback === "incorrect" ? (
+                  <div
+                    className={`min-h-24 w-full rounded-xl border bg-slate-950/25 p-4 text-base outline-none transition sm:min-h-[4.5rem] sm:text-lg ${feedbackStyle}`}
+                    aria-label="Submitted answer review"
+                  >
+                    <div className="flex flex-wrap gap-x-1.5 gap-y-1">
+                      {answerParts.length > 0 ? (
+                        answerParts.map((part) => (
+                          <span
+                            key={part.id}
+                            className={
+                              part.status === "correct"
+                                ? "text-emerald-300"
+                                : "text-rose-300"
+                            }
+                          >
+                            {part.token}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-rose-300">
+                          No answer entered
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <textarea
+                    className={`min-h-24 w-full resize-none rounded-xl border bg-slate-950/25 p-4 text-base text-white outline-none transition placeholder:text-slate-400 sm:min-h-[4.5rem] sm:text-lg ${feedbackStyle}`}
+                    placeholder={`Type your answer in ${activeLesson.targetLanguage}...`}
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    onKeyDown={handleTranslateKeyDown}
+                  />
+                )}
               </>
             )}
 
             {shouldShowSupportArea && (
               <div className="mt-auto border-t border-slate-800 pt-6">
-                {isTranslateExercise && (
+                {isTranslateExercise && feedback === "incorrect" ? (
+                  <div
+                    className="mx-auto flex justify-center text-base font-medium text-emerald-300"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    Answer: {hintAnswerText}
+                  </div>
+                ) : isTranslateExercise && (
                   <button
                     type="button"
                     className={`mx-auto flex items-center gap-3 text-base font-medium transition ${showHint ? "text-emerald-300 hover:text-emerald-200" : "text-violet-300 hover:text-violet-200"}`}
@@ -810,12 +875,12 @@ export default function LessonPage() {
                     {!showHint && (
                       <span className="grid size-6 place-items-center rounded-full border border-violet-400/60 text-xs">?</span>
                     )}
-                    {showHint ? `Answer: ${acceptedAnswerText}` : "Need a hint?"}
+                    {showHint ? `Answer: ${hintAnswerText}` : "Need a hint?"}
                   </button>
                 )}
 
-                {feedback === "incorrect" && (
-                  <div className={isTranslateExercise ? "mt-4 rounded-2xl border border-rose-300/30 bg-rose-500/10 p-4 text-sm" : "rounded-2xl border border-rose-300/30 bg-rose-500/10 p-4 text-sm"}>
+                {feedback === "incorrect" && !isTranslateExercise && (
+                  <div className="rounded-2xl border border-rose-300/30 bg-rose-500/10 p-4 text-sm">
                     <p className="font-semibold text-rose-100">Review your answer</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {answerParts.length > 0 ? (
@@ -839,7 +904,7 @@ export default function LessonPage() {
                     </div>
                     <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Correct answer</p>
                     <p className="mt-1 rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-emerald-100">
-                      {acceptedAnswerText}
+                      {hintAnswerText}
                     </p>
                   </div>
                 )}
@@ -866,9 +931,9 @@ export default function LessonPage() {
           </div>
         </section>
 
-        <div className="relative z-10 mt-6 flex justify-end border-t border-slate-800 pt-6">
+        <div className="relative z-10 mt-5 flex justify-end border-t border-slate-800 pt-5 sm:mt-6 sm:pt-6">
           <Button
-            className="min-w-64 rounded-xl py-4 text-base disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-xl py-4 text-base disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-64 sm:w-auto"
             disabled={!canSubmit}
             onClick={() => void handlePrimarySubmit()}
           >

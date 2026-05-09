@@ -1,4 +1,5 @@
 export type SupportedFileType = "json" | "csv";
+export type ContextSource = "ai" | "manual";
 export type ProficiencyLevel =
   | "Beginner"
   | "Elementary"
@@ -45,7 +46,7 @@ export interface ProcessingStep {
 export interface UploadApiResponse {
   summary: ContextSummary;
   records: TextRecord[];
-  source: "ai";
+  source: ContextSource;
 }
 
 export type LessonExerciseType = "translate" | "fill_blank" | "vocabulary";

@@ -37,6 +37,7 @@ export default function ReviewPage() {
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   const levelIndex = useMemo(() => LEVELS.indexOf(summary?.level ?? "Intermediate"), [summary?.level]);
+  const isManualContext = extractionSource === "manual";
 
   async function handleGenerateLessons() {
     setIsGenerating(true);
@@ -49,7 +50,8 @@ export default function ReviewPage() {
         body: JSON.stringify({
           summary,
           progress,
-          targetLanguage: targetLanguage ?? "Spanish"
+          targetLanguage: targetLanguage ?? "Spanish",
+          contextSource: extractionSource ?? "manual"
         })
       });
 
@@ -80,8 +82,8 @@ export default function ReviewPage() {
   if (!summary) {
     return (
       <ContextFlowLayout activeStep="review">
-        <Card className="mx-auto max-w-lg border-white/10 p-8 text-center">
-          <p className="text-lg font-medium text-white">No uploaded context found.</p>
+        <Card className="mx-auto max-w-lg border-white/10 p-6 text-center sm:p-8">
+          <p className="text-lg font-medium text-white">No learning profile found.</p>
           <Button className="mt-6" onClick={() => router.push("/upload")}>
             Go to upload
           </Button>
@@ -93,20 +95,21 @@ export default function ReviewPage() {
   return (
     <ContextFlowLayout activeStep="review">
       <div className="text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+        <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-4xl">
           Review your{" "}
           <span className="bg-gradient-to-r from-violet-400 to-sky-400 bg-clip-text text-transparent">
             learning profile
           </span>
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-slate-400 sm:text-base">
-          We&apos;ve extracted the information below from your conversations. Review and edit anything before we create
-          your lessons.
+          {isManualContext
+            ? "We built the profile below from your interests. Review and edit anything before we create your lessons."
+            : "We've extracted the information below from your conversations. Review and edit anything before we create your lessons."}
         </p>
       </div>
 
-      <Card className="mx-auto mt-10 max-w-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(15,23,42,0.55),rgba(8,12,28,0.88))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.4)] sm:p-8">
-        <section className="border-b border-white/10 pb-8">
+      <Card className="mx-auto mt-8 max-w-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(15,23,42,0.55),rgba(8,12,28,0.88))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.4)] sm:mt-10 sm:p-8">
+        <section className="border-b border-white/10 pb-6 sm:pb-8">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="flex items-center gap-2 text-lg font-semibold text-white">
@@ -115,17 +118,21 @@ export default function ReviewPage() {
                 </span>
                 Top interests
               </p>
-              <p className="mt-1 text-sm text-slate-500">These are the main topics we found in your conversations.</p>
+              <p className="mt-1 text-sm text-slate-500">
+                {isManualContext
+                  ? "These are the topics you entered for personalization."
+                  : "These are the main topics we found in your conversations."}
+              </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
               <input
-                className="min-w-[8rem] flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-slate-600 focus:border-violet-500/40"
+                className="min-h-11 min-w-[8rem] flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:text-slate-600 focus:border-violet-500/40"
                 value={newInterest}
                 onChange={(event) => setNewInterest(event.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addInterestFromInput()}
                 placeholder="Add interest"
               />
-              <Button type="button" variant="secondary" className="whitespace-nowrap shrink-0" onClick={addInterestFromInput}>
+              <Button type="button" variant="secondary" className="w-full shrink-0 whitespace-nowrap sm:w-auto" onClick={addInterestFromInput}>
                 + Add interest
               </Button>
             </div>
@@ -153,7 +160,7 @@ export default function ReviewPage() {
           )}
         </section>
 
-        <section className="border-b border-white/10 py-8">
+        <section className="border-b border-white/10 py-6 sm:py-8">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="flex items-center gap-2 text-lg font-semibold text-white">
@@ -162,7 +169,11 @@ export default function ReviewPage() {
                 </span>
                 Detected language level
               </p>
-              <p className="mt-1 text-sm text-slate-500">Based on your vocabulary, grammar and conversation complexity.</p>
+              <p className="mt-1 text-sm text-slate-500">
+                {isManualContext
+                  ? "Set a starting level for lessons based on your current comfort."
+                  : "Based on your vocabulary, grammar and conversation complexity."}
+              </p>
             </div>
             <label className="sr-only" htmlFor="level-select">
               Language level
@@ -181,9 +192,9 @@ export default function ReviewPage() {
             </select>
           </div>
 
-          <div className="relative mt-6 px-2">
+          <div className="relative -mx-1 mt-6 overflow-x-auto px-1 pb-2 sm:mx-0 sm:overflow-visible sm:px-2 sm:pb-0">
             <div className="absolute left-8 right-8 top-[9px] h-px bg-white/15 sm:left-10 sm:right-10" aria-hidden />
-            <div className="relative flex justify-between gap-1">
+            <div className="relative flex min-w-[420px] justify-between gap-1 sm:min-w-0">
               {LEVELS.map((level, index) => {
                 const selected = index === levelIndex;
                 return (
@@ -214,7 +225,7 @@ export default function ReviewPage() {
           </div>
         </section>
 
-        <section className="border-b border-white/10 py-8">
+        <section className="border-b border-white/10 py-6 sm:py-8">
           <p className="mb-4 text-lg font-semibold text-white">Conversation themes</p>
           {summary.themes.length > 0 ? (
             <div className="grid gap-2 sm:grid-cols-2">
@@ -235,7 +246,7 @@ export default function ReviewPage() {
           )}
         </section>
 
-        <section className="pt-8">
+        <section className="pt-6 sm:pt-8">
           <p className="mb-4 text-lg font-semibold text-white">Sample vocabulary</p>
           {summary.vocabulary.length > 0 ? (
             <div className="flex flex-wrap gap-2">
@@ -254,7 +265,7 @@ export default function ReviewPage() {
           )}
         </section>
 
-        <div className="mt-8 flex flex-col gap-2 rounded-xl border border-amber-500/15 bg-amber-500/[0.06] p-4 sm:flex-row sm:items-start sm:gap-3">
+        <div className="mt-8 flex flex-col gap-2 rounded-xl border border-amber-500/15 bg-amber-500/[0.06] p-4 min-[420px]:flex-row min-[420px]:items-start min-[420px]:gap-3">
           <span aria-hidden className="text-lg">
             💡
           </span>
@@ -290,11 +301,11 @@ export default function ReviewPage() {
         )}
 
         <p className="mt-4 text-center text-xs text-slate-600">
-          Extraction source: {extractionSource === "ai" ? "AI" : "Unknown"} · Target language:{" "}
+          Profile source: {extractionSource === "ai" ? "AI" : extractionSource === "manual" ? "Manual" : "Unknown"} · Target language:{" "}
           {targetLanguage ?? "Spanish"}
         </p>
 
-        <div className="mt-10 flex flex-col-reverse gap-4 border-t border-white/10 pt-8 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-8 flex flex-col-reverse gap-4 border-t border-white/10 pt-6 sm:mt-10 sm:flex-row sm:items-center sm:justify-between sm:pt-8">
           <Button variant="secondary" className="w-full gap-2 sm:w-auto" onClick={() => router.push("/upload")}>
             <span aria-hidden>←</span>
             Back

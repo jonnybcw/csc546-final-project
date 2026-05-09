@@ -28,7 +28,12 @@ export function AppShell({ active, children }: AppShellProps) {
       />
 
       <div className="relative mx-auto grid min-h-screen max-w-7xl lg:grid-cols-[168px_1fr]">
-        <aside className="flex flex-col border-white/10 px-4 py-6 lg:border-r">
+        <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4 lg:hidden">
+          <OrionLogo priority className="w-28" />
+          <LogoutButton className="px-3 py-2 text-xs" />
+        </header>
+
+        <aside className="hidden flex-col border-white/10 px-4 py-6 lg:flex lg:border-r">
           <OrionLogo priority className="w-32" />
 
           <nav className="mt-10 space-y-3" aria-label="Primary navigation">
@@ -64,8 +69,35 @@ export function AppShell({ active, children }: AppShellProps) {
           </div>
         </aside>
 
-        {children}
+        <div className="min-w-0 pb-24 lg:pb-0">{children}</div>
       </div>
+
+      <nav
+        className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-slate-950/90 p-2 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur lg:hidden"
+        aria-label="Primary navigation"
+      >
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = active === item.value;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition",
+                isActive
+                  ? "bg-indigo-600/40 text-white shadow-[0_0_24px_rgba(79,70,229,0.2)]"
+                  : "text-slate-300 hover:bg-white/5 hover:text-white"
+              )}
+              aria-current={isActive ? "page" : undefined}
+            >
+              <Icon />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
     </main>
   );
 }

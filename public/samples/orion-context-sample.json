@@ -3,24 +3,24 @@
     "id": "msg-001",
     "source": "chatgpt",
     "createdAt": "2026-04-01T09:10:00Z",
-    "text": "Give me some tips for a trip to Barcelona."
+    "text": "Give me some tips for a trip to Rio de Janeiro."
   },
   {
     "id": "msg-002",
     "source": "gemini",
     "createdAt": "2026-04-02T14:22:00Z",
-    "text": "How can I greet someone in Spanish?"
+    "text": "How can I greet someone in Portuguese?"
   },
   {
     "id": "msg-003",
     "source": "chatgpt",
     "createdAt": "2026-04-03T18:05:00Z",
-    "text": "Nice restaurants in Madrid"
+    "text": "Nice restaurants in Sao Paulo"
   },
   {
     "id": "msg-004",
     "source": "gemini",
     "createdAt": "2026-04-04T11:40:00Z",
-    "text": "I am planning a trip to Spain and I need useful travel phrases for airports and hotels."
+    "text": "I am planning a trip to Brazil and I need useful travel phrases for airports and hotels."
   }
 ]

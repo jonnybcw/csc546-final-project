@@ -3,30 +3,24 @@
     "id": "msg-001",
     "source": "chatgpt",
     "createdAt": "2026-04-01T09:10:00Z",
-    "text": "I finished my coding project late last night and pushed the final commit after debugging the API."
+    "text": "Give me some tips for a trip to Barcelona."
   },
   {
     "id": "msg-002",
     "source": "gemini",
     "createdAt": "2026-04-02T14:22:00Z",
-    "text": "I want to improve my Spanish fluency for work meetings about software development."
+    "text": "How can I greet someone in Spanish?"
   },
   {
     "id": "msg-003",
     "source": "chatgpt",
     "createdAt": "2026-04-03T18:05:00Z",
-    "text": "My workout routine has been more consistent, and I usually go to the gym after work."
+    "text": "Nice restaurants in Madrid"
   },
   {
     "id": "msg-004",
     "source": "gemini",
     "createdAt": "2026-04-04T11:40:00Z",
-    "text": "I am planning a trip to Madrid and I need useful travel phrases for airports and hotels."
-  },
-  {
-    "id": "msg-005",
-    "source": "chatgpt",
-    "createdAt": "2026-04-05T20:33:00Z",
-    "text": "I want daily practice with vocabulary like deploy, debug, routine, progress, and project."
+    "text": "I am planning a trip to Spain and I need useful travel phrases for airports and hotels."
   }
 ]

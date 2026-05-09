@@ -28,9 +28,9 @@ export default async function LoginPage({
   const nextPath = params.next || "/language";
   const errorMessage =
     params.error === "auth_callback_failed"
-      ? "Magic link verification failed. Request a new login link."
+      ? "Google sign-in failed. Please try again."
       : params.error === "invalid_callback"
-        ? "Invalid login callback. Request a new login link."
+        ? "Invalid sign-in callback. Please try again."
         : null;
 
   return (

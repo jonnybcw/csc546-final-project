@@ -11,7 +11,7 @@ export const createClient = () => {
 
   return createBrowserClient(supabaseUrl, supabaseKey, {
     auth: {
-      flowType: "implicit"
+      flowType: "pkce"
     }
   });
 };

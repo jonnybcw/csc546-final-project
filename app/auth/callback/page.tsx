@@ -5,8 +5,6 @@ export default async function AuthCallbackPage({
 }: {
   searchParams: Promise<{
     code?: string;
-    token_hash?: string;
-    type?: string;
     next?: string;
   }>;
 }) {
@@ -17,8 +15,6 @@ export default async function AuthCallbackPage({
     <main className="mx-auto flex min-h-screen max-w-xl items-center px-6 py-10">
       <AuthCallbackClient
         code={params.code ?? null}
-        tokenHash={params.token_hash ?? null}
-        type={params.type ?? null}
         nextPath={nextPath}
       />
     </main>

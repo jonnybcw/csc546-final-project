@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { type EmailOtpType } from "@supabase/supabase-js";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,13 +14,9 @@ const SESSION_WAIT_MS = 250;
 
 export function AuthCallbackClient({
   code,
-  tokenHash,
-  type,
   nextPath
 }: {
   code: string | null;
-  tokenHash: string | null;
-  type: string | null;
   nextPath: string;
 }) {
   const router = useRouter();
@@ -56,21 +51,15 @@ export function AuthCallbackClient({
               const hasSession = await waitForSession();
               if (!hasSession) {
                 throw new Error(
-                  "This login link used PKCE and expired in this browser context. Request a new magic link and open it in the same browser."
+                  "This Google sign-in expired in this browser context. Please start sign-in again."
                 );
               }
             } else {
               throw exchangeError;
             }
           }
-        } else if (tokenHash && type) {
-          const { error: verifyError } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: type as EmailOtpType
-          });
-          if (verifyError) throw verifyError;
         } else {
-          // Implicit flow may return tokens in URL hash instead of query params.
+          // Handles any existing session or fallback implicit OAuth response.
           const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
           const accessToken = hashParams.get("access_token");
           const refreshToken = hashParams.get("refresh_token");
@@ -85,7 +74,7 @@ export function AuthCallbackClient({
             // In some redirects, session restoration is asynchronous.
             const hasSession = await waitForSession();
             if (!hasSession) {
-              throw new Error("Invalid or expired login link. Please request a new magic link.");
+              throw new Error("Invalid or expired Google sign-in. Please try again.");
             }
           }
         }
@@ -108,13 +97,13 @@ export function AuthCallbackClient({
     return () => {
       mounted = false;
     };
-  }, [code, nextPath, router, supabase, tokenHash, type]);
+  }, [code, nextPath, router, supabase]);
 
   return (
     <Card className="w-full space-y-4 p-8">
       <p className="text-2xl font-semibold">Completing sign in...</p>
       {!error ? (
-        <p className="text-sm text-slate-300">Please wait while we verify your magic link.</p>
+        <p className="text-sm text-slate-300">Please wait while we finish Google sign-in.</p>
       ) : (
         <>
           <p className="rounded-lg bg-rose-500/15 px-3 py-2 text-sm text-rose-100">{error}</p>

@@ -45,6 +45,7 @@ export interface ProcessingStep {
 export interface UploadApiResponse {
   summary: ContextSummary;
   records: TextRecord[];
+  source: "ai";
 }
 
 export type LessonExerciseType = "translate" | "fill_blank" | "vocabulary";
@@ -55,6 +56,11 @@ export interface LessonExercise {
   prompt: string;
   answer: string;
   hint: string;
+  choices?: string[];
+  blankAnswers?: string[];
+  blankPlaceholders?: string[];
+  sourceTerm?: string;
+  matchPairs?: VocabularyPair[];
 }
 
 export interface LessonPlan {
@@ -64,6 +70,12 @@ export interface LessonPlan {
   difficulty: ProficiencyLevel;
   exercises: LessonExercise[];
   focus: string;
+  targetLanguage: string;
+}
+
+export interface LessonGenerationResponse {
+  lesson: LessonPlan;
+  source: "ai";
 }
 
 export interface ProgressSnapshot {
@@ -73,4 +85,5 @@ export interface ProgressSnapshot {
   timeLearnedMinutes: number;
   accuracyRate: number;
   completedDays: number[];
+  lessonActivityDates: string[];
 }

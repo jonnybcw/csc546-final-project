@@ -1,29 +1,76 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
+import { AppShell } from "@/components/orion/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useOrionStore } from "@/store/orionStore";
+import { syncOrionStateFromSupabase } from "@/lib/orionSupabaseBootstrap";
+import { useOrionStore, waitForOrionStoreHydration } from "@/store/orionStore";
+import { createClient as createSupabaseBrowserClient } from "@/utils/supabase/client";
 
-const NAV_ITEMS = ["Home", "Lessons", "Progress", "Vocabulary", "Insights", "Settings"];
-const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
+const STAR_POINTS = Array.from({ length: 46 }, (_, index) => ({
+  id: `star-${(index * 47) % 350}-${(index * 31) % 240}`,
+  cx: (index * 47) % 350,
+  cy: (index * 31) % 240,
+  r: index % 5 === 0 ? 1.2 : 0.55,
+  opacity: index % 4 === 0 ? 0.75 : 0.35
+}));
 
 export default function HomePage() {
   const router = useRouter();
   const summary = useOrionStore((state) => state.summary);
   const lesson = useOrionStore((state) => state.lesson);
   const progress = useOrionStore((state) => state.progress);
-  const generateLesson = useOrionStore((state) => state.generateLesson);
+  const userFullName = useOrionStore((state) => state.userFullName);
 
-  const activeLesson = lesson ?? (summary ? (generateLesson(), useOrionStore.getState().lesson) : null);
+  const [remoteSyncDone, setRemoteSyncDone] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      await waitForOrionStoreHydration();
+      if (cancelled) return;
+
+      const hasLocal = useOrionStore.getState().summary && useOrionStore.getState().lesson;
+      if (hasLocal) {
+        setRemoteSyncDone(true);
+        return;
+      }
+
+      const supabase = createSupabaseBrowserClient();
+      if (supabase) {
+        await syncOrionStateFromSupabase(supabase);
+      }
+      if (!cancelled) setRemoteSyncDone(true);
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const activeLesson = lesson;
+
+  if (!remoteSyncDone) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-4xl flex-col items-center justify-center px-6 py-20">
+        <p className="text-slate-400">Loading your workspace…</p>
+      </main>
+    );
+  }
 
   if (!summary || !activeLesson) {
     return (
       <main className="mx-auto max-w-4xl px-6 py-20">
         <Card className="text-center">
-          <p className="text-xl font-semibold">Start by uploading your context</p>
-          <p className="mt-2 text-slate-400">We need your data to generate personalized lessons.</p>
+          <p className="text-xl font-semibold">No lesson available yet</p>
+          <p className="mt-2 text-slate-400">
+            Generate your lesson from the review step after AI processing completes successfully.
+          </p>
           <Button className="mt-6" onClick={() => router.push("/upload")}>
             Go to upload
           </Button>
@@ -32,98 +79,137 @@ export default function HomePage() {
     );
   }
 
+  const firstName = userFullName?.trim().split(/\s+/)[0] ?? "";
+
   return (
-    <main className="mx-auto grid min-h-screen max-w-7xl gap-6 px-5 py-6 lg:grid-cols-[230px_1fr]">
-      <aside className="glass-card rounded-2xl p-4">
-        <div className="mb-8 text-2xl font-semibold">Orion</div>
-        <nav className="space-y-2">
-          {NAV_ITEMS.map((item, idx) => (
-            <div
-              key={item}
-              className={`rounded-xl px-3 py-2 text-sm ${
-                idx === 0 ? "bg-indigo-500/20 text-indigo-100" : "text-slate-300"
-              }`}
-            >
-              {item}
-            </div>
-          ))}
-        </nav>
-
-        <Card className="mt-10">
-          <p className="text-sm text-slate-300">Go further with Orion Premium</p>
-          <Button className="mt-3 w-full">Upgrade now</Button>
-        </Card>
-      </aside>
-
-      <section>
-        <header className="mb-5 flex items-center justify-between">
+    <AppShell active="home">
+      <section className="px-6 py-8 sm:px-10 lg:px-12">
+        <header className="mb-10 flex items-center justify-between gap-6">
           <div>
-            <p className="text-4xl font-semibold">Good evening, Alex!</p>
-            <p className="text-slate-300">Let&apos;s continue your learning journey.</p>
+            <h1 className="flex items-center gap-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              Good evening{firstName ? `, ${firstName}!` : ""}
+              <CrescentIcon />
+            </h1>
+            <p className="mt-2 text-sm text-slate-300 sm:text-base">Let&apos;s continue your learning journey.</p>
           </div>
-          <div className="text-sm text-amber-200">12 day streak</div>
+          <div className="flex items-center gap-4">
+            <div className="hidden items-center gap-2 text-sm text-slate-300 sm:flex">
+              <FlameIcon />
+              {progress.streakDays} day streak
+            </div>
+          </div>
         </header>
 
-        <Card className="mb-6 grid gap-4 lg:grid-cols-[1fr_220px]">
-          <div>
-            <p className="text-sm text-indigo-300">TODAY&apos;S LESSON</p>
-            <h2 className="mt-1 text-4xl font-semibold">{activeLesson.title}</h2>
-            <p className="mt-3 max-w-xl text-slate-300">{activeLesson.description}</p>
-            <div className="mt-6 flex items-center gap-4">
-              <Button onClick={() => router.push("/lesson")}>Start Lesson</Button>
-              <span className="text-sm text-slate-400">{activeLesson.durationMinutes}-20 min</span>
-              <span className="text-sm text-slate-400">{activeLesson.difficulty}</span>
+        <Card className="relative max-w-3xl overflow-hidden rounded-2xl border-indigo-300/15 bg-[linear-gradient(135deg,rgba(11,16,41,0.96),rgba(7,10,30,0.98))] p-0">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_15%,rgba(99,102,241,0.2),transparent_24%),radial-gradient(circle_at_88%_82%,rgba(124,58,237,0.22),transparent_34%)]" />
+          <div className="absolute right-0 top-0 hidden h-full w-1/2 sm:block" aria-hidden>
+            <div className="absolute inset-0 opacity-80">
+              <Constellation />
             </div>
+            <div className="absolute -bottom-24 right-[-72px] h-56 w-96 rounded-[50%] bg-[radial-gradient(circle_at_38%_15%,rgba(255,255,255,0.55),rgba(124,58,237,0.7)_18%,rgba(40,18,112,0.9)_38%,rgba(7,10,30,0)_62%)] blur-[1px]" />
           </div>
-          <div className="rounded-2xl border border-white/10 bg-indigo-500/5 p-4">
-            <p className="text-sm text-slate-300">Focus</p>
-            <p className="mt-2 text-lg font-semibold text-indigo-200">{activeLesson.focus}</p>
-          </div>
-        </Card>
 
-        <p className="mb-3 text-2xl font-semibold">Your progress this week</p>
-        <div className="mb-6 grid gap-3 md:grid-cols-4">
-          <Card>
-            <p className="text-3xl font-semibold">{progress.weeklyGoalCompletion}%</p>
-            <p className="text-sm text-slate-400">Weekly Goal</p>
-          </Card>
-          <Card>
-            <p className="text-3xl font-semibold">{progress.wordsLearned}</p>
-            <p className="text-sm text-slate-400">New Words</p>
-          </Card>
-          <Card>
-            <p className="text-3xl font-semibold">
-              {Math.floor(progress.timeLearnedMinutes / 60)}h {progress.timeLearnedMinutes % 60}m
-            </p>
-            <p className="text-sm text-slate-400">Time Learned</p>
-          </Card>
-          <Card>
-            <p className="text-3xl font-semibold">{progress.accuracyRate}%</p>
-            <p className="text-sm text-slate-400">Accuracy</p>
-          </Card>
-        </div>
+          <div className="relative p-7 sm:p-9">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-300">Today&apos;s lesson</p>
+            <h2 className="mt-5 max-w-md text-3xl font-semibold leading-tight text-white sm:text-4xl">
+              {activeLesson.title}
+            </h2>
+            <p className="mt-5 max-w-sm text-sm leading-7 text-slate-300">{activeLesson.description}</p>
 
-        <Card className="flex items-center justify-between">
-          <div>
-            <p className="font-semibold">Consistency is key!</p>
-            <p className="text-sm text-slate-400">Small progress every day leads to big results.</p>
-          </div>
-          <div className="flex gap-2">
-            {DAYS.map((day, index) => (
-              <div
-                key={`${day}-${index}`}
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs ${
-                  progress.completedDays.includes(index + 1)
-                    ? "bg-indigo-500 text-white"
-                    : "bg-white/5 text-slate-400"
-                }`}
-              >
-                {day}
+            <div className="mt-10 flex flex-col gap-5 sm:flex-row sm:items-center">
+              <Button className="inline-flex w-full items-center justify-center gap-6 px-7 py-4 text-base sm:w-auto" onClick={() => router.push("/lesson")}>
+                Start Lesson
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15" aria-hidden>
+                  <PlayIcon />
+                </span>
+              </Button>
+
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-slate-300">
+                <span className="inline-flex items-center gap-2">
+                  <ClockIcon />
+                  {activeLesson.durationMinutes}-{activeLesson.durationMinutes + 5} min
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <LevelIcon />
+                  {activeLesson.difficulty}
+                </span>
               </div>
-            ))}
+            </div>
           </div>
         </Card>
       </section>
-    </main>
+    </AppShell>
+  );
+}
+
+function CrescentIcon() {
+  return (
+    <span className="relative h-7 w-7 shrink-0 rounded-full bg-amber-300" aria-hidden>
+      <span className="absolute -right-1 -top-1 h-7 w-7 rounded-full bg-[#020514]" />
+    </span>
+  );
+}
+
+function FlameIcon() {
+  return (
+    <svg className="h-5 w-5 text-amber-400" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <title>Streak</title>
+      <path d="M12.7 2.4c.5 2.9-.5 4.7-2 6.5-1.4 1.7-2.8 3.3-2.1 5.8.5-1.2 1.4-2.1 2.5-2.7 3.4 2.2 2.1 5.7.1 7.2 3.7-.3 6.6-2.9 6.6-6.8 0-3.8-2.4-6.8-5.1-10Z" />
+      <path d="M8.8 16.6c0 2 1.4 3.4 3.2 3.4s3.2-1.3 3.2-3.4c0-1.5-.8-2.6-2.2-3.7-.1 1.3-.8 2.1-1.7 2.9-.7.6-1.2 1.2-1.2 2.1-.5-.4-.9-.8-1.3-1.3Z" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <title>Play</title>
+      <path d="M8 5.2v13.6L18.8 12 8 5.2Z" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg className="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <title>Duration</title>
+      <circle cx="12" cy="12" r="8.5" strokeWidth="1.6" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" d="M12 7.5V12l3 2" />
+    </svg>
+  );
+}
+
+function LevelIcon() {
+  return (
+    <svg className="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <title>Difficulty</title>
+      <path strokeLinecap="round" strokeWidth="1.6" d="M6 18V9m6 9V6m6 12v-6" />
+    </svg>
+  );
+}
+
+function Constellation() {
+  return (
+    <svg className="h-full w-full" viewBox="0 0 360 260" fill="none" aria-hidden>
+      <title>Constellation background</title>
+      <g opacity="0.45">
+        {STAR_POINTS.map((star) => (
+          <circle key={star.id} cx={star.cx} cy={star.cy} r={star.r} fill="white" opacity={star.opacity} />
+        ))}
+      </g>
+      <path d="M144 90 191 48l58 63-38 44-67-65Z" stroke="#8b8cff" strokeWidth="1.2" opacity="0.55" />
+      <path d="M191 48v78l58-15M144 90l-34 34 43 28M211 155l44 45" stroke="#8b8cff" strokeWidth="1" opacity="0.4" />
+      {[
+        [144, 90],
+        [191, 48],
+        [249, 111],
+        [211, 155],
+        [110, 124],
+        [153, 152],
+        [255, 200]
+      ].map(([cx, cy]) => (
+        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="3.2" fill="#f6f3ff" />
+      ))}
+    </svg>
   );
 }

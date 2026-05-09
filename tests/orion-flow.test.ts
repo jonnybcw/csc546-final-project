@@ -23,7 +23,8 @@ describe("orion flow", () => {
       wordsLearned: 140,
       timeLearnedMinutes: 320,
       accuracyRate: 84,
-      completedDays: [1, 2, 3, 4, 5]
+      completedDays: [1, 2, 3, 4, 5],
+      lessonActivityDates: []
     });
 
     expect(summary.totalEntries).toBe(2);
